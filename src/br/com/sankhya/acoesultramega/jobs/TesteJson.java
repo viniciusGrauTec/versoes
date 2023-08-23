@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.jobs;
+package br.com.sankhya.acoesultramega.jobs;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileWriter;

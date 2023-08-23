@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.services;
+package br.com.sankhya.acoesultramega.services;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
@@ -18,7 +18,7 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
-import br.com.sankhya.acoestreinamento.model.MailJava;
+import br.com.sankhya.acoesultramega.model.MailJava;
 
 public class MailJavaSender {
 	// cria as propriedades necessarias para o envio de email

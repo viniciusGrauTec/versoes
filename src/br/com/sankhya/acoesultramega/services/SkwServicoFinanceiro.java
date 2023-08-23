@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.services;
+package br.com.sankhya.acoesultramega.services;
 
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -7,7 +7,7 @@ import java.util.Date;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
-import br.com.sankhya.acoestreinamento.util.XMLUtil;
+import br.com.sankhya.acoesultramega.util.XMLUtil;
 import br.com.sankhya.extensions.actionbutton.ContextoAcao;
 import br.com.sankhya.jape.dao.JdbcWrapper;
 import br.com.sankhya.jape.sql.NativeSql;

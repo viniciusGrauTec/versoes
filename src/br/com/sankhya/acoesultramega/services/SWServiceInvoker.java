@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.services;
+package br.com.sankhya.acoesultramega.services;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -35,7 +35,7 @@ import org.w3c.dom.NodeList;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import br.com.sankhya.acoestreinamento.util.EnviromentUtils;
+import br.com.sankhya.acoesultramega.util.EnviromentUtils;
 import br.com.sankhya.extensions.actionbutton.ContextoAcao;
 
 public class SWServiceInvoker {

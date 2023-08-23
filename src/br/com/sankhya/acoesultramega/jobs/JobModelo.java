@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.jobs;
+package br.com.sankhya.acoesultramega.jobs;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -9,8 +9,8 @@ import java.sql.SQLException;
 import org.cuckoo.core.ScheduledAction;
 import org.cuckoo.core.ScheduledActionContext;
 
-import br.com.sankhya.acoestreinamento.services.SkwServicoFinanceiro;
-import br.com.sankhya.acoestreinamento.util.EnviromentUtils;
+import br.com.sankhya.acoesultramega.services.SkwServicoFinanceiro;
+import br.com.sankhya.acoesultramega.util.EnviromentUtils;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.core.JapeSession;
 import br.com.sankhya.jape.core.JapeSession.SessionHandle;

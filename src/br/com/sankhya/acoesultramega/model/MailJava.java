@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.model;
+package br.com.sankhya.acoesultramega.model;
 
 import java.util.List;
 import java.util.Map;

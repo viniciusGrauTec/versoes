@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.extensions;
+package br.com.sankhya.acoesultramega.extensions;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -37,11 +38,9 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 			BufferedReader reader;
 			String line;
 			StringBuilder responseContent = new StringBuilder();
-			// URL url = new
-			// URL("https://private-anon-63848475a7-posvendamestre.apiary-mock.com/posvenda-core/produtos");
+			
 			URL url = new URL(ur);
-			// URL url = new
-			// URL("http://private-anon-f8bb8ebfcf-posvendapedidos.apiary-mock.com/posvenda-pedido/pedidoUnico/pedidoUnico/pedido");
+			
 			HttpURLConnection http = (HttpURLConnection) url.openConnection();
 			http.setConnectTimeout(10000);
 			http.addRequestProperty("User-Agent",
@@ -49,12 +48,6 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 			http.setRequestProperty("Content-Type", "application/json");
 			http.setDoOutput(true);
 			http.setDoInput(true);
-			// String data = json;
-
-			// byte[] out = data.getBytes(StandardCharsets.UTF_8);
-
-			// OutputStream stream = http.getOutputStream();
-			// stream.write(out);
 
 			int status = http.getResponseCode();
 
@@ -109,96 +102,6 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 		//}
 
 	}
-		
-	/*public String apiPdf(String ur) throws Exception {
-			
-			//String ur = "192.168.1.41:9090/api/health-check";
-			
-		Date now = new Date();
-		SimpleDateFormat formatter2 = new SimpleDateFormat("MMMM dd, yyyy HH:mm:ss", Locale.ENGLISH);
-		String formattedDateTime = formatter2.format(now);
-		
-			BufferedReader reader;
-			String line;
-			StringBuilder responseContent = new StringBuilder();
-			// URL url = new
-			// URL("https://private-anon-63848475a7-posvendamestre.apiary-mock.com/posvenda-core/produtos");
-			URL url = new URL(ur);
-			// URL url = new
-			// URL("http://private-anon-f8bb8ebfcf-posvendapedidos.apiary-mock.com/posvenda-pedido/pedidoUnico/pedidoUnico/pedido");
-			HttpURLConnection http = (HttpURLConnection) url.openConnection();
-			http.setConnectTimeout(10000);
-			http.addRequestProperty("User-Agent",
-					"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
-			http.setRequestProperty("Content-Type", "application/pdf");
-			http.setDoOutput(true);
-			http.setDoInput(true);
-			// String data = json;
-			
-			// byte[] out = data.getBytes(StandardCharsets.UTF_8);
-			
-			// OutputStream stream = http.getOutputStream();
-			// stream.write(out);
-			
-			int status = http.getResponseCode();
-			
-			if (status >= 300) {
-				reader = new BufferedReader(new InputStreamReader(
-						http.getErrorStream()));
-				while ((line = reader.readLine()) != null) {
-					responseContent.append(line);
-				}
-				reader.close();
-			} else {
-				reader = new BufferedReader(new InputStreamReader(
-						http.getInputStream()));
-				while ((line = reader.readLine()) != null) {
-					responseContent.append(line);
-				}
-				reader.close();
-			}
-			System.out.println("Output from Server .... \n" + status);
-			String response = responseContent.toString();
-			
-			System.out.println("Response: " + response);
-			
-			String arquivoString = "__start_fileinformation__{\"name\":\""+"teste"+".pdf\",\"size\":null,\"type\":\"application/pdf\",\"lastModifiedDate\":\""+ formattedDateTime +"\"}__end_fileinformation__" + response;
-			
-			byte[] pdfBytes = arquivoString.getBytes(StandardCharsets.UTF_8);
-			
-			//insertPDF(pdfBytes);
-			
-			http.disconnect();
-			
-			// Parse the JSON response
-			JsonParser parser = new JsonParser();
-			JsonObject jsonResponse = parser.parse(response).getAsJsonObject();
-			
-			// Access the "licensas" array in the JSON response
-			JsonArray licensasArray = jsonResponse.getAsJsonArray("licensas");
-			
-			// Iterate over all objects in the "licensas" array
-			for (int i = 0; i < licensasArray.size(); i++) {
-				// Get the current "licensa" object
-				JsonObject licensa = licensasArray.get(i).getAsJsonObject();
-				
-				// Access the fields of the "licensa" object
-				String id = licensa.get("id").getAsString();
-				String tipoProduto = licensa.get("tipoProduto").getAsString();
-				boolean ativa = licensa.get("ativa").getAsBoolean();
-				
-				// Perform any necessary processing with the data
-				System.out.println("ID: " + id);
-				System.out.println("Tipo de Produto: " + tipoProduto);
-				System.out.println("Ativa: " + ativa);
-				System.out.println();
-			}
-			
-			return response;
-			
-			//}
-			
-		}*/
 	
 	public void insertPDF(byte[] pdfBytes) throws Exception{
 	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -241,7 +144,9 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 	    Date now = new Date();
 	    SimpleDateFormat formatter2 = new SimpleDateFormat("MMMM dd, yyyy HH:mm:ss", Locale.ENGLISH);
 	    String formattedDateTime = formatter2.format(now);
-
+	    
+	    
+	    
 	    URL url = new URL(ur);
 	    HttpURLConnection http = (HttpURLConnection) url.openConnection();
 	    http.setConnectTimeout(10000);
@@ -263,14 +168,15 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 	            
 				byte[] mergedBytes = mergeByteArrays(cabecalhoBytes, pdfBytes);
 				
-	            insertPDF(mergedBytes, formattedDateTime);
+	            //insertPDF(mergedBytes, formattedDateTime);
 	        }
 	    }
 
 	    http.disconnect();
 	}
 
-	public void insertPDF(byte[] pdfBytes, String formattedDateTime) throws Exception {
+	public void insertPDF(byte[] pdfBytes, BigDecimal codparc, BigDecimal codtipdoc, 
+			BigDecimal nuIdent, String dtEmissao, String dtValidade) throws Exception {
 	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 	    PreparedStatement pstmt = null;
@@ -278,15 +184,24 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 	    try {
 	        jdbc.openSession();
 
-	        String sqlUpdate = "INSERT INTO AD_TESTEPDF(ID, PDF, DATA) "
-	                + "VALUES ((SELECT NVL(MAX(ID), 0) + 1 FROM AD_TESTEPDF), "
+	        String sqlUpdate = "INSERT INTO AD_DOCPARC(CODPARC, CODTIPDOC, NUIDENT, "
+	        		+ "								DTEMISSAO, DTVALIDADE, LINKARQUIVO) "
+	                + "VALUES (?,"
 	                + "        ?,"
-	                + "        SYSDATE) ";
+	                + "        ?,"
+	                + "		   ?,"
+	                + "  	   ?,"
+	                + "		   ?)";
 
 	        pstmt = jdbc.getPreparedStatement(sqlUpdate);
 
 	        // Configurar os parâmetros do PreparedStatement
-	        pstmt.setBytes(1, pdfBytes);
+	        pstmt.setBigDecimal(1, codparc);
+	        pstmt.setBigDecimal(2, codtipdoc);
+	        pstmt.setBigDecimal(3, nuIdent);
+	        pstmt.setString(4, dtEmissao);
+	        pstmt.setString(5, dtValidade);
+	        pstmt.setBytes(6, pdfBytes);
 	        pstmt.executeUpdate();
 
 	        System.out.println("O PDF foi inserido no banco de dados com sucesso.");
@@ -339,7 +254,7 @@ public class AcaoTesteApi implements /* AcaoRotinaJava */ScheduledAction{
 			System.out.println("Teste");
 			//api("http://192.168.1.41:9090/api/health-check");
 			//api("http://192.168.1.41:9090/api/enterprise/bussinessLicenses/10588595001092");
-			apiPdf("http://192.168.1.41:9090/api/enterprise/bussinessLicense/download/25351514313201918");
+			apiPdf("http://192.168.1.41:9090/api/enterprise/bussinessLicense/download/");
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

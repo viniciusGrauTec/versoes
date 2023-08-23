@@ -1,4 +1,4 @@
-package br.com.sankhya.acoestreinamento.util;
+package br.com.sankhya.acoesultramega.util;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
