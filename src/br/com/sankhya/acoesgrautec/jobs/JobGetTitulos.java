@@ -25,13 +25,13 @@ public class JobGetTitulos implements ScheduledAction {
 		LogConfiguration.setPath(SWRepositoryUtils.getBaseFolder()+"/personalizacao/financeirofromdiscount/logs");
 		
 		try {
-			String[] response = apiGet("https://api.acadweb.com.br/"
-					+ "{cliente-sigla}/financeiro/titulos?"
+			String[] response = apiGet("https://api.acadweb.com.br/testegrautboavistasankhya/"
+					+ "financeiro/titulos?"
 					//+ "vencimentoInicial=2023-04-11?"
 					//+ "vencimentoFinal=2023-04-24?"
 					+ "dataInicial=2023-04-19 06:36:00?"
 					+ "dataFinal=2023-04-24 06:36:00?"
-					+ "quantidade=500");
+					+ "quantidade=2");
 			
 			String responseString = response[1];
 			
@@ -57,7 +57,6 @@ public class JobGetTitulos implements ScheduledAction {
 	        }
 			
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
