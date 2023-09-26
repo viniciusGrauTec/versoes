@@ -40,14 +40,15 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 	public void onTime(ScheduledActionContext arg0) {
 
 		try {
-
+			insertLogIntegracao("Iniciando chamada do endpoint de Alunos", "Sucesso");
+			
 			/*
 			 * String[] response =
 			 * apiGet("https://api.acadweb.com.br/testegrautboavistasankhya/" +
 			 * "/alunos?" + "dataInicial=2023-04-19 06:36:00?" +
 			 * "dataFinal=2023-04-24 06:36:00?" + "quantidade=10");
 			 */
-
+			
 			String responseString = "[\n"
 					+ "  {\n"
 					+ "    \"aluno_id\": \"ADM200026\",\n"
@@ -176,8 +177,10 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 						credorEndereco, credorCep, credorBairro, credorCidade,
 						credorUf, credorResidencial, credorCelular,
 						credorComercial);
+				insertLogIntegracao("Finalizando Credor", "Sucesso");
 
 				insertCursoTurma(cursoDescricao, turmaId);
+				insertLogIntegracao("Finalizando Curso e turma", "Sucesso");
 
 				insertAluno(credotAtual, alunoId, alunoNome, alunoNomeSocial,
 						alunoMae, alunoPai, alunoEndereco, alunoCep,
@@ -185,10 +188,18 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 						alunoDataNascimento, alunoRg, alunoCpf, alunoCelular,
 						alunoResidencial, alunoEmail, alunoGrauInstrucao,
 						alunoProfissao);
+				insertLogIntegracao("Finalizando Aluno", "Sucesso");
+				
+				insertLogIntegracao("Finalizando chamada do endpoint de Alunos", "Sucesso");
 
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
+			try {
+				insertLogIntegracao("Erro no chamado do endpoint", "Erro");
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
 		}
 	}
 
@@ -339,6 +350,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			pstmt.executeUpdate();
 
 		} catch (SQLException e) {
+			insertLogIntegracao("Erro ao cadastrar credor", "Erro");
 			e.printStackTrace();
 		} finally {
 			if (pstmt != null) {
@@ -404,6 +416,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 				} catch (SQLException e) {
 					e.printStackTrace();
+					insertLogIntegracao("Erro ao cadastrar/validar curso", "Erro");
 				} finally {
 					if (pstmt != null) {
 						pstmt.close();
@@ -420,6 +433,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
+
 
 		BigDecimal count = BigDecimal.ZERO;
 
@@ -444,6 +458,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			insertLogIntegracao("Erro ao validar se curso já cadastrado",
+					"Erro");
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -471,6 +487,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		BigDecimal count = BigDecimal.ZERO;
 
+
+
 		try {
 
 			jdbc.openSession();
@@ -492,6 +510,9 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			insertLogIntegracao(
+					"Erro ao validar se curso já cadastrado como projeto",
+					"Erro");
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -508,7 +529,6 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		} else {
 			return false;
 		}
-
 	}
 
 	public boolean validarCadastroTurma(String turma) throws Exception {
@@ -593,6 +613,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				jdbc.closeSession();
 			}
 		} catch (Exception se) {
+			insertLogIntegracao("Erro cadastrando curso", "Erro");
 			se.printStackTrace();
 		}
 
@@ -605,6 +626,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
+		
 
 		BigDecimal cursoNovo = getMaxNumProjPai();
 		String codProjPai = "-999999999";
@@ -640,6 +662,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				jdbc.closeSession();
 			}
 		} catch (Exception se) {
+			insertLogIntegracao("Erro cadastrando curso como projeto", "Erro");
 			se.printStackTrace();
 		}
 
@@ -697,6 +720,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
+		
 
 		try {
 			jdbc.openSession();
@@ -730,6 +754,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			pstmt.executeUpdate();
 
 		} catch (SQLException e) {
+			insertLogIntegracao("Erro cadastrando aluno", "Erro");
 			e.printStackTrace();
 		} finally {
 			if (pstmt != null) {
@@ -773,6 +798,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			insertLogIntegracao("Erro ao validar se endereço já cadastrado",
+					"Erro");
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -800,6 +827,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		BigDecimal codend = getMaxNumEnd();
 
+
 		jdbc.openSession();
 
 		String sqlUpdate = "INSERT INTO TSIEND"
@@ -826,6 +854,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (Exception se) {
 			se.printStackTrace();
+			insertLogIntegracao("Erro ao cadastrar endereço", "Erro");
 		}
 
 		return codend;
@@ -904,6 +933,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 
+
 		BigDecimal count = BigDecimal.ZERO;
 
 		try {
@@ -930,6 +960,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			insertLogIntegracao("Erro ao validar se bairro já cadastrado",
+					"Erro");
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -957,9 +989,11 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		BigDecimal codbai = getMaxNumBai();
 
+
 		jdbc.openSession();
 
-		String sqlUpdate = "INSERT INTO TSIBAI" + "(CODBAI, NOMEBAI, DTALTER)"
+		String sqlUpdate = "INSERT INTO TSIBAI" 
+				+ "(CODBAI, NOMEBAI, DTALTER)"
 				+ "VALUES " + "		(?, ?, SYSDATE) ";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
@@ -976,6 +1010,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (Exception se) {
 			se.printStackTrace();
+			insertLogIntegracao("Erro ao bairro endereço", "Erro");
 		}
 
 		return codbai;
@@ -1048,6 +1083,36 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
+	public void insertLogIntegracao(String descricao, String status)
+			throws Exception {
+
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+
+		jdbc.openSession();
+
+		String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, STATUS)"
+				+ "VALUES (((SELECT NVL(MAX(NUMUNICO), 0) + 1 FROM AD_LOGINTEGRACAO)), ?, SYSDATE, ?)";
+
+		pstmt = jdbc.getPreparedStatement(sqlUpdate);
+		pstmt.setString(1, descricao);
+		pstmt.setString(2, status);
+		pstmt.executeUpdate();
+
+		try {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			if (jdbc != null) {
+				jdbc.closeSession();
+			}
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
+
+	}
+
 	public String[] apiGet(String ur) throws Exception {
 
 		BufferedReader reader;
@@ -1088,4 +1153,5 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		return new String[] { Integer.toString(status), response };
 	}
+
 }
