@@ -40,76 +40,256 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 	public void onTime(ScheduledActionContext arg0) {
 
 		try {
-			insertLogIntegracao("Iniciando chamada do endpoint de Alunos", "Sucesso");
-			
+			insertLogIntegracao("Iniciando chamada do endpoint de Alunos",
+					"Sucesso", " ");
+
+			String[] response = apiGet("https://api.acadweb.com.br/testegrautboavistasankhya"
+					+ "/alunos");
+			// + "?" // + "dataInicial=2023-04-19 06:36:00?"
+			// + "dataFinal=2023-04-24 06:36:00?" + "quantidade=10");
+
+			String responseString = response[1];
+
 			/*
-			 * String[] response =
-			 * apiGet("https://api.acadweb.com.br/testegrautboavistasankhya/" +
-			 * "/alunos?" + "dataInicial=2023-04-19 06:36:00?" +
-			 * "dataFinal=2023-04-24 06:36:00?" + "quantidade=10");
+			 * String responseString = "[\n" + "  {\n" +
+			 * "    \"aluno_id\": \"CDI130001\",\n" +
+			 * "    \"aluno_nome\": \"Luzia Barbosa do Nascimento\",\n" +
+			 * "    \"aluno_nome_social\": null,\n" +
+			 * "    \"aluno_pai\": \"Jose Manoel do Nascimento\",\n" +
+			 * "    \"aluno_mae\": \"Iraci Barbosa do Nascimento\",\n" +
+			 * "    \"aluno_endereco\": \"Rua Aracatiara 155\",\n" +
+			 * "    \"aluno_endereco_cep\": \"52110440\",\n" +
+			 * "    \"aluno_endereco_bairro\": \"Mangabeira\",\n" +
+			 * "    \"aluno_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"aluno_endereco_uf\": \"PE\",\n" +
+			 * "    \"aluno_sexo\": \"F\",\n" +
+			 * "    \"aluno_data_nascimento\": \"1979-12-13\",\n" +
+			 * "    \"aluno_uf_nascimento\": \"PE\",\n" +
+			 * "    \"aluno_naturalidade\": \"Recife\",\n" +
+			 * "    \"aluno_nacionalidade\": \"Brasileira\",\n" +
+			 * "    \"aluno_tipo_sanguineo\": null,\n" +
+			 * "    \"aluno_raca_id\": null,\n" +
+			 * "    \"aluno_raca_descricao\": null,\n" +
+			 * "    \"aluno_rg\": \"6607432\",\n" +
+			 * "    \"aluno_rg_orgao\": \"SDS\",\n" +
+			 * "    \"aluno_rg_data_expedicao\": null,\n" +
+			 * "    \"aluno_cpf\": \"07026794450\",\n" +
+			 * "    \"aluno_titulo_eleitoral\": null,\n" +
+			 * "    \"aluno_titulo_zona\": null,\n" +
+			 * "    \"aluno_titulo_secao\": null,\n" +
+			 * "    \"aluno_reservista\": null,\n" +
+			 * "    \"aluno_reservista_categoria\": null,\n" +
+			 * "    \"aluno_telefone_residencial\": \"008185296881\",\n" +
+			 * "    \"aluno_telefone_celular\": \"008130330754\",\n" +
+			 * "    \"aluno_telefone_comercial\": \"008186341564\",\n" +
+			 * "    \"aluno_telefone_fax\": null,\n" +
+			 * "    \"aluno_email\": null,\n" +
+			 * "    \"aluno_emancipado\": \"S\",\n" +
+			 * "    \"aluno_grau_instrucao_id\": \"03\",\n" +
+			 * "    \"aluno_grau_instrucao_descricao\": \"Ensino Médio\",\n" +
+			 * "    \"aluno_profissao_id\": \"044\",\n" +
+			 * "    \"aluno_profissoa_descricao\": \"Outras\",\n" +
+			 * "    \"aluno_religiao_id\": null,\n" +
+			 * "    \"aluno_religiao_descricao\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_id\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_descricao\": null,\n" +
+			 * "    \"credor_nome\": \"Luzia Barbosa do Nascimento\",\n" +
+			 * "    \"credor_cpf\": \"07026794450\",\n" +
+			 * "    \"credor_endereco\": \"Rua Aracatiara 155\",\n" +
+			 * "    \"credor_endereco_cep\": \"52110440\",\n" +
+			 * "    \"credor_endereco_bairro\": \"Mangabeira\",\n" +
+			 * "    \"credor_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"credor_endereco_uf\": \"PE\",\n" +
+			 * "    \"credor_telefone_residencial\": \"008185296881\",\n" +
+			 * "    \"credor_telefone_celular\": \"008130330754\",\n" +
+			 * "    \"credor_telefone_comercial\": \"008186341564\",\n" +
+			 * "    \"credor_telefone_fax\": null,\n" +
+			 * "    \"ativo\": \"I\",\n" +
+			 * "    \"data_atualizacao\": \"2013-03-19 00:00:00.000\",\n" +
+			 * "    \"cursos\": [\n" + "      {\n" +
+			 * "        \"turma_id\": null,\n" +
+			 * "        \"curso_id\": \"00022\",\n" +
+			 * "        \"curso_descricao\": \"Formação Complementar em Cuidados com Idosos\"\n"
+			 * + "      }\n" + "    ]\n" + "  },\n" + "  {\n" +
+			 * "    \"aluno_id\": \"CDI130002\",\n" +
+			 * "    \"aluno_nome\": \"Maria Gorette de Oliveira Beltrao\",\n" +
+			 * "    \"aluno_nome_social\": null,\n" +
+			 * "    \"aluno_pai\": \"Fausto de Oliveira Beltrao\",\n" +
+			 * "    \"aluno_mae\": \"Edite Severina de Oliveira\",\n" +
+			 * "    \"aluno_endereco\": \"Rua 03, 29\",\n" +
+			 * "    \"aluno_endereco_cep\": \"55816560\",\n" +
+			 * "    \"aluno_endereco_bairro\": \"COHAB 02\",\n" +
+			 * "    \"aluno_endereco_cidade\": \"Carpina\",\n" +
+			 * "    \"aluno_endereco_uf\": \"PE\",\n" +
+			 * "    \"aluno_sexo\": \"F\",\n" +
+			 * "    \"aluno_data_nascimento\": \"1968-10-13\",\n" +
+			 * "    \"aluno_uf_nascimento\": \"PE\",\n" +
+			 * "    \"aluno_naturalidade\": \"Igarassu\",\n" +
+			 * "    \"aluno_nacionalidade\": \"Brasileiro\",\n" +
+			 * "    \"aluno_tipo_sanguineo\": null,\n" +
+			 * "    \"aluno_raca_id\": null,\n" +
+			 * "    \"aluno_raca_descricao\": null,\n" +
+			 * "    \"aluno_rg\": \"3059803\",\n" +
+			 * "    \"aluno_rg_orgao\": \"SDS\",\n" +
+			 * "    \"aluno_rg_data_expedicao\": null,\n" +
+			 * "    \"aluno_cpf\": \"46502971415\",\n" +
+			 * "    \"aluno_titulo_eleitoral\": null,\n" +
+			 * "    \"aluno_titulo_zona\": null,\n" +
+			 * "    \"aluno_titulo_secao\": null,\n" +
+			 * "    \"aluno_reservista\": null,\n" +
+			 * "    \"aluno_reservista_categoria\": null,\n" +
+			 * "    \"aluno_telefone_residencial\": \"008196758651\",\n" +
+			 * "    \"aluno_telefone_celular\": \"008198212116\",\n" +
+			 * "    \"aluno_telefone_comercial\": null,\n" +
+			 * "    \"aluno_telefone_fax\": null,\n" +
+			 * "    \"aluno_email\": \"gorete42@hotmail.com\",\n" +
+			 * "    \"aluno_emancipado\": \"S\",\n" +
+			 * "    \"aluno_grau_instrucao_id\": \"03\",\n" +
+			 * "    \"aluno_grau_instrucao_descricao\": \"Ensino Médio\",\n" +
+			 * "    \"aluno_profissao_id\": \"027\",\n" +
+			 * "    \"aluno_profissoa_descricao\": \"Estudante\",\n" +
+			 * "    \"aluno_religiao_id\": null,\n" +
+			 * "    \"aluno_religiao_descricao\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_id\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_descricao\": null,\n" +
+			 * "    \"credor_nome\": \"Maria Gorette de Oliveira Beltrao\",\n" +
+			 * "    \"credor_cpf\": \"46502971415\",\n" +
+			 * "    \"credor_endereco\": \"Rua 03, 29\",\n" +
+			 * "    \"credor_endereco_cep\": \"55816560\",\n" +
+			 * "    \"credor_endereco_bairro\": \"COHAB 02\",\n" +
+			 * "    \"credor_endereco_cidade\": \"Carpina\",\n" +
+			 * "    \"credor_endereco_uf\": \"PE\",\n" +
+			 * "    \"credor_telefone_residencial\": \"008196758651\",\n" +
+			 * "    \"credor_telefone_celular\": \"008198212116\",\n" +
+			 * "    \"credor_telefone_comercial\": null,\n" +
+			 * "    \"credor_telefone_fax\": null,\n" +
+			 * "    \"ativo\": \"I\",\n" +
+			 * "    \"data_atualizacao\": \"2013-03-27 00:00:00.000\",\n" +
+			 * "    \"cursos\": [\n" + "      {\n" +
+			 * "        \"turma_id\": null,\n" +
+			 * "        \"curso_id\": \"00022\",\n" +
+			 * "        \"curso_descricao\": \"Formação Complementar em Cuidados com Idosos\"\n"
+			 * + "      }\n" + "    ]\n" + "  },\n" + "  {\n" +
+			 * "    \"aluno_id\": \"CDI130003\",\n" +
+			 * "    \"aluno_nome\": \"Palloma Dulce de Sousa\",\n" +
+			 * "    \"aluno_nome_social\": null,\n" +
+			 * "    \"aluno_pai\": \"William Alexandre de Souza\",\n" +
+			 * "    \"aluno_mae\": \"Ivanilda Dulce da Silva Souza\",\n" +
+			 * "    \"aluno_endereco\": \"R Doutor Machado 548\",\n" +
+			 * "    \"aluno_endereco_cep\": \"52040020\",\n" +
+			 * "    \"aluno_endereco_bairro\": \"Campo Grande\",\n" +
+			 * "    \"aluno_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"aluno_endereco_uf\": \"PE\",\n" +
+			 * "    \"aluno_sexo\": \"F\",\n" +
+			 * "    \"aluno_data_nascimento\": \"1993-10-12\",\n" +
+			 * "    \"aluno_uf_nascimento\": \"PE\",\n" +
+			 * "    \"aluno_naturalidade\": \"Recife\",\n" +
+			 * "    \"aluno_nacionalidade\": \"Brasileira\",\n" +
+			 * "    \"aluno_tipo_sanguineo\": null,\n" +
+			 * "    \"aluno_raca_id\": null,\n" +
+			 * "    \"aluno_raca_descricao\": null,\n" +
+			 * "    \"aluno_rg\": \"7464564\",\n" +
+			 * "    \"aluno_rg_orgao\": \"sds\",\n" +
+			 * "    \"aluno_rg_data_expedicao\": null,\n" +
+			 * "    \"aluno_cpf\": \"06641841464\",\n" +
+			 * "    \"aluno_titulo_eleitoral\": null,\n" +
+			 * "    \"aluno_titulo_zona\": null,\n" +
+			 * "    \"aluno_titulo_secao\": null,\n" +
+			 * "    \"aluno_reservista\": null,\n" +
+			 * "    \"aluno_reservista_categoria\": null,\n" +
+			 * "    \"aluno_telefone_residencial\": \"008134273176\",\n" +
+			 * "    \"aluno_telefone_celular\": \"008186538027\",\n" +
+			 * "    \"aluno_telefone_comercial\": \"008197955990\",\n" +
+			 * "    \"aluno_telefone_fax\": null,\n" +
+			 * "    \"aluno_email\": \"pallomadulce@hotmail.com\",\n" +
+			 * "    \"aluno_emancipado\": \"S\",\n" +
+			 * "    \"aluno_grau_instrucao_id\": \"03\",\n" +
+			 * "    \"aluno_grau_instrucao_descricao\": \"Ensino Médio\",\n" +
+			 * "    \"aluno_profissao_id\": \"027\",\n" +
+			 * "    \"aluno_profissoa_descricao\": \"Estudante\",\n" +
+			 * "    \"aluno_religiao_id\": null,\n" +
+			 * "    \"aluno_religiao_descricao\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_id\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_descricao\": null,\n" +
+			 * "    \"credor_nome\": \"Palloma Dulce de Sousa\",\n" +
+			 * "    \"credor_cpf\": \"06641841464\",\n" +
+			 * "    \"credor_endereco\": \"R Doutor Machado 548\",\n" +
+			 * "    \"credor_endereco_cep\": \"52040020\",\n" +
+			 * "    \"credor_endereco_bairro\": \"Campo Grande\",\n" +
+			 * "    \"credor_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"credor_endereco_uf\": \"PE\",\n" +
+			 * "    \"credor_telefone_residencial\": \"008134273176\",\n" +
+			 * "    \"credor_telefone_celular\": \"008186538027\",\n" +
+			 * "    \"credor_telefone_comercial\": \"008197955990\",\n" +
+			 * "    \"credor_telefone_fax\": null,\n" +
+			 * "    \"ativo\": \"I\",\n" +
+			 * "    \"data_atualizacao\": \"2013-03-28 00:00:00.000\",\n" +
+			 * "    \"cursos\": [\n" + "      {\n" +
+			 * "        \"turma_id\": null,\n" +
+			 * "        \"curso_id\": \"00022\",\n" +
+			 * "        \"curso_descricao\": \"Formação Complementar em Cuidados com Idosos\"\n"
+			 * + "      }\n" + "    ]\n" + "  }]";
 			 */
-			
-			String responseString = "[\n"
-					+ "  {\n"
-					+ "    \"aluno_id\": \"ADM200026\",\n"
-					+ "    \"aluno_nome\": \"Fernando Figueiredo\",\n"
-					+ "    \"aluno_nome_social\": \"Olivia Figueiredo\",\n"
-					+ "    \"aluno_mae\": \"Clarice Mariana Vitória\",\n"
-					+ "    \"aluno_pai\": \"Lorenzo Guilherme Cláudio Figueiredo\",\n"
-					+ "    \"aluno_endereco\": \"Rua Calêndula\",\n"
-					+ "    \"aluno_endereco_cep\": \"69099524\",\n"
-					+ "    \"aluno_endereco_bairro\": \"Bairro Novo\",\n"
-					+ "    \"aluno_endereco_cidade\": \"Recife\",\n"
-					+ "    \"aluno_endereco_uf\": \"PE\",\n"
-					+ "    \"aluno_sexo\": \"F\",\n"
-					+ "    \"aluno_data_nascimento\": \"2000-02-09\",\n"
-					+ "    \"aluno_uf_nascimento\": \"PE\",\n"
-					+ "    \"aluno_naturalidade\": \"Recife\",\n"
-					+ "    \"aluno_nacionalidade\": \"Brasileira\",\n"
-					+ "    \"aluno_tipo_sanguineo\": \"O+\",\n"
-					+ "    \"aluno_raca_id\": 3,\n"
-					+ "    \"aluno_raca_descricao\": \"Parda\",\n"
-					+ "    \"aluno_rg\": \"398059949\",\n"
-					+ "    \"aluno_rg_orgao\": \"SDS PE\",\n"
-					+ "    \"aluno_rg_data_expedicao\": \"2002-02-09\",\n"
-					+ "    \"aluno_cpf\": \"67175535708\",\n"
-					+ "    \"aluno_titulo_eleitoral\": \"175410650884\",\n"
-					+ "    \"aluno_titulo_zona\": \"006\",\n"
-					+ "    \"aluno_titulo_secao\": \"0324\",\n"
-					+ "    \"aluno_reservista\": \"153109\",\n"
-					+ "    \"aluno_reservista_categoria\": \"Dispensado do serviço militar\",\n"
-					+ "    \"aluno_telefone_residencial\": \"8138660962\",\n"
-					+ "    \"aluno_telefone_celular\": \"81991147250\",\n"
-					+ "    \"aluno_telefone_comercial\": \"81991147250\",\n"
-					+ "    \"aluno_telefone_fax\": \"8138660962\",\n"
-					+ "    \"aluno_email\": \"exemplo@email.com.br\",\n"
-					+ "    \"aluno_emancipado\": \"S\",\n"
-					+ "    \"aluno_grau_instrucao_id\": \"03\",\n"
-					+ "    \"aluno_grau_instrucao_descricao\": \"Ensino Médio\",\n"
-					+ "    \"aluno_profissao_id\": \"027\",\n"
-					+ "    \"aluno_profissoa_descricao\": \"Estudante\",\n"
-					+ "    \"aluno_religiao_id\": \"01\",\n"
-					+ "    \"aluno_religiao_descricao\": \"Agnóstico\",\n"
-					+ "    \"aluno_instituicao_2grau_id\": \"001\",\n"
-					+ "    \"aluno_instituicao_2grau_descricao\": \"Escola Qualinfo\",\n"
-					+ "    \"credor_nome\": \"Kauê Noah Yago Porto\",\n"
-					+ "    \"credor_cpf\": \"03716471003\",\n"
-					+ "    \"credor_endereco\": \"Rua Pedro Jusselino de Aquino\",\n"
-					+ "    \"credor_endereco_cep\": \"58052370\",\n"
-					+ "    \"credor_endereco_bairro\": \"Jardim Universitário\",\n"
-					+ "    \"credor_endereco_cidade\": \"Recife\",\n"
-					+ "    \"credor_endereco_uf\": \"PE\",\n"
-					+ "    \"credor_telefone_residencial\": \"8129463856\",\n"
-					+ "    \"credor_telefone_celular\": \"81999849284\",\n"
-					+ "    \"credor_telefone_comercial\": \"81999849284\",\n"
-					+ "    \"credor_telefone_fax\": \"8129463856\",\n"
-					+ "    \"ativo\": \"I\",\n"
-					+ "    \"cursos\": [\n"
-					+ "      {\n"
-					+ "        \"curso_id\": \"00003\",\n"
-					+ "        \"curso_descricao\": \"Técnico em Administração\",\n"
-					+ "        \"turma_id\": \"ADM01\"\n" + "      }\n"
-					+ "    ]\n" + "  }\n" + "]";
+
+			/*
+			 * "[\n" + "  {\n" + "    \"aluno_id\": \"ADM200026\",\n" +
+			 * "    \"aluno_nome\": \"Fernando Figueiredo\",\n" +
+			 * "    \"aluno_nome_social\": null ,\n" +
+			 * "    \"aluno_mae\": \"Clarice Mariana Vitória\",\n" +
+			 * "    \"aluno_pai\": \"Lorenzo Guilherme Cláudio Figueiredo\",\n"
+			 * + "    \"aluno_endereco\": \"Rua Calêndula\",\n" +
+			 * "    \"aluno_endereco_cep\": \"69099524\",\n" +
+			 * "    \"aluno_endereco_bairro\": \"Bairro Novo\",\n" +
+			 * "    \"aluno_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"aluno_endereco_uf\": \"PE\",\n" +
+			 * "    \"aluno_sexo\": \"F\",\n" +
+			 * "    \"aluno_data_nascimento\": \"2000-02-09\",\n" +
+			 * "    \"aluno_uf_nascimento\": \"PE\",\n" +
+			 * "    \"aluno_naturalidade\": \"Recife\",\n" +
+			 * "    \"aluno_nacionalidade\": \"Brasileira\",\n" +
+			 * "    \"aluno_tipo_sanguineo\": null,\n" +
+			 * "    \"aluno_raca_id\": null,\n" +
+			 * "    \"aluno_raca_descricao\": null,\n" +
+			 * "    \"aluno_rg\": \"398059949\",\n" +
+			 * "    \"aluno_rg_orgao\": \"SDS PE\",\n" +
+			 * "    \"aluno_rg_data_expedicao\": null,\n" +
+			 * "    \"aluno_cpf\": \"67175535708\",\n" +
+			 * "    \"aluno_titulo_eleitoral\": null,\n" +
+			 * "    \"aluno_titulo_zona\": null,\n" +
+			 * "    \"aluno_titulo_secao\": null,\n" +
+			 * "    \"aluno_reservista\": null,\n" +
+			 * "    \"aluno_reservista_categoria\": null,\n" +
+			 * "    \"aluno_telefone_residencial\": \"8138660962\",\n" +
+			 * "    \"aluno_telefone_celular\": \"81991147250\",\n" +
+			 * "    \"aluno_telefone_comercial\": null,\n" +
+			 * "    \"aluno_telefone_fax\": null,\n" +
+			 * "    \"aluno_email\": \"exemplo@email.com.br\",\n" +
+			 * "    \"aluno_emancipado\": \"S\",\n" +
+			 * "    \"aluno_grau_instrucao_id\": \"03\",\n" +
+			 * "    \"aluno_grau_instrucao_descricao\": \"Ensino Médio\",\n" +
+			 * "    \"aluno_profissao_id\": \"027\",\n" +
+			 * "    \"aluno_profissoa_descricao\": \"Estudante\",\n" +
+			 * "    \"aluno_religiao_id\": null,\n" +
+			 * "    \"aluno_religiao_descricao\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_id\": null,\n" +
+			 * "    \"aluno_instituicao_2grau_descricao\": null,\n" +
+			 * "    \"credor_nome\": \"Kauê Noah Yago Porto\",\n" +
+			 * "    \"credor_cpf\": \"03716471003\",\n" +
+			 * "    \"credor_endereco\": \"Rua Pedro Jusselino de Aquino\",\n" +
+			 * "    \"credor_endereco_cep\": \"58052370\",\n" +
+			 * "    \"credor_endereco_bairro\": \"Jardim Universitário\",\n" +
+			 * "    \"credor_endereco_cidade\": \"Recife\",\n" +
+			 * "    \"credor_endereco_uf\": \"PE\",\n" +
+			 * "    \"credor_telefone_residencial\": \"8129463856\",\n" +
+			 * "    \"credor_telefone_celular\": \"81999849284\",\n" +
+			 * "    \"credor_telefone_comercial\": null,\n" +
+			 * "    \"credor_telefone_fax\": null,\n" +
+			 * "    \"ativo\": \"I\",\n" + "    \"cursos\": [\n" + "      {\n" +
+			 * "        \"curso_id\":null,\n" +
+			 * "        \"curso_descricao\": \"Técnico em Administração\",\n" +
+			 * "        \"turma_id\": \"ADM01\"\n" + "      }\n" + "    ]\n" +
+			 * "  }\n" + "]";
+			 */
 
 			JsonParser parser = new JsonParser();
 			JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
@@ -117,90 +297,177 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			for (JsonElement jsonElement : jsonArray) {
 				JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-				String alunoId = jsonObject.get("aluno_id").getAsString();
-				String alunoNome = jsonObject.get("aluno_nome").getAsString();
+				String alunoId = jsonObject.get("aluno_id").isJsonNull() ? null
+						: jsonObject.get("aluno_id").getAsString();
+				String alunoNome = jsonObject.get("aluno_nome").isJsonNull() ? null
+						: jsonObject.get("aluno_nome").getAsString();
 				String alunoNomeSocial = jsonObject.get("aluno_nome_social")
-						.getAsString();
-				String alunoMae = jsonObject.get("aluno_mae").getAsString();
-				String alunoPai = jsonObject.get("aluno_pai").getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_nome_social").getAsString();
+				String alunoMae = jsonObject.get("aluno_mae").isJsonNull() ? null
+						: jsonObject.get("aluno_mae").getAsString();
+				String alunoPai = jsonObject.get("aluno_pai").isJsonNull() ? null
+						: jsonObject.get("aluno_pai").getAsString();
 				String alunoEndereco = jsonObject.get("aluno_endereco")
+						.isJsonNull() ? null : jsonObject.get("aluno_endereco")
 						.getAsString();
 				String alunoCep = jsonObject.get("aluno_endereco_cep")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_cep").getAsString();
 				String alunoBairro = jsonObject.get("aluno_endereco_bairro")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_bairro").getAsString();
 				String alunoCidade = jsonObject.get("aluno_endereco_cidade")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_cidade").getAsString();
 				String alunoUf = jsonObject.get("aluno_endereco_uf")
-						.getAsString();
-				String alunoSexo = jsonObject.get("aluno_sexo").getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_uf").getAsString();
+				String alunoSexo = jsonObject.get("aluno_sexo").isJsonNull() ? null
+						: jsonObject.get("aluno_sexo").getAsString();
 				String alunoDataNascimento = jsonObject.get(
-						"aluno_data_nascimento").getAsString();
-				String alunoRg = jsonObject.get("aluno_rg").getAsString();
-				String alunoCpf = jsonObject.get("aluno_cpf").getAsString();
+						"aluno_data_nascimento").isJsonNull() ? null
+						: jsonObject.get("aluno_data_nascimento").getAsString();
+				String alunoRg = jsonObject.get("aluno_rg").isJsonNull() ? null
+						: jsonObject.get("aluno_rg").getAsString();
+				String alunoCpf = jsonObject.get("aluno_cpf").isJsonNull() ? null
+						: jsonObject.get("aluno_cpf").getAsString();
 				String alunoCelular = jsonObject.get("aluno_telefone_celular")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_telefone_celular").getAsString();
 				String alunoResidencial = jsonObject.get(
-						"aluno_telefone_residencial").getAsString();
-				String alunoEmail = jsonObject.get("aluno_email").getAsString();
-				String alunoGrauInstrucao = jsonObject.get(
-						"aluno_grau_instrucao_descricao").getAsString();
-				String alunoProfissao = jsonObject.get(
-						"aluno_profissoa_descricao").getAsString();
+						"aluno_telefone_residencial").isJsonNull() ? null
+						: jsonObject.get("aluno_telefone_residencial")
+								.getAsString();
+				String alunoEmail = jsonObject.get("aluno_email").isJsonNull() ? null
+						: jsonObject.get("aluno_email").getAsString();
 
-				String credorNome = jsonObject.get("credor_nome").getAsString();
-				String credorCpf = jsonObject.get("credor_cpf").getAsString();
+				String credorNome = jsonObject.get("credor_nome").isJsonNull() ? null
+						: jsonObject.get("credor_nome").getAsString();
+				String credorCpf = jsonObject.get("credor_cpf").isJsonNull() ? null
+						: jsonObject.get("credor_cpf").getAsString();
 				String credorEndereco = jsonObject.get("credor_endereco")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject
+						.get("credor_endereco").getAsString();
 				String credorCep = jsonObject.get("credor_endereco_cep")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_cep").getAsString();
 				String credorBairro = jsonObject.get("credor_endereco_bairro")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_bairro").getAsString();
 				String credorCidade = jsonObject.get("credor_endereco_cidade")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_cidade").getAsString();
 				String credorUf = jsonObject.get("credor_endereco_uf")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_uf").getAsString();
 				String credorResidencial = jsonObject.get(
-						"credor_telefone_residencial").getAsString();
+						"credor_telefone_residencial").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_residencial")
+								.getAsString();
 				String credorCelular = jsonObject
-						.get("credor_telefone_celular").getAsString();
+						.get("credor_telefone_celular").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_celular")
+								.getAsString();
 				String credorComercial = jsonObject.get(
-						"credor_telefone_comercial").getAsString();
-
+						"credor_telefone_comercial").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_comercial")
+								.getAsString();
 				String cursoDescricao = jsonObject.getAsJsonArray("cursos")
 						.get(0).getAsJsonObject().get("curso_descricao")
-						.getAsString();
+						.isJsonNull() ? null : jsonObject
+						.getAsJsonArray("cursos").get(0).getAsJsonObject()
+						.get("curso_descricao").getAsString();
 				String turmaId = jsonObject.getAsJsonArray("cursos").get(0)
-						.getAsJsonObject().get("turma_id").getAsString();
+						.getAsJsonObject().get("turma_id").isJsonNull() ? null
+						: jsonObject.getAsJsonArray("cursos").get(0)
+								.getAsJsonObject().get("turma_id")
+								.getAsString();
 
-				BigDecimal credotAtual = insertCredor(credorNome, credorCpf,
-						credorEndereco, credorCep, credorBairro, credorCidade,
-						credorUf, credorResidencial, credorCelular,
-						credorComercial);
-				insertLogIntegracao("Finalizando Credor", "Sucesso");
+				boolean credor = getIfCredorExist(credorCpf);
 
-				insertCursoTurma(cursoDescricao, turmaId);
-				insertLogIntegracao("Finalizando Curso e turma", "Sucesso");
+				if (credor == true) {
+					BigDecimal credotAtual = insertCredor(credorNome,
+							credorCpf, credorEndereco, credorCep, credorBairro,
+							credorCidade, credorUf, credorResidencial,
+							credorCelular, credorComercial);
+					insertLogIntegracao("Finalizando Credor", "Sucesso",
+							credorNome);
 
-				insertAluno(credotAtual, alunoId, alunoNome, alunoNomeSocial,
-						alunoMae, alunoPai, alunoEndereco, alunoCep,
-						alunoBairro, alunoCidade, alunoUf, alunoSexo,
-						alunoDataNascimento, alunoRg, alunoCpf, alunoCelular,
-						alunoResidencial, alunoEmail, alunoGrauInstrucao,
-						alunoProfissao);
-				insertLogIntegracao("Finalizando Aluno", "Sucesso");
-				
-				insertLogIntegracao("Finalizando chamada do endpoint de Alunos", "Sucesso");
+					insertCursoTurma(cursoDescricao, turmaId, credorNome);
+					insertLogIntegracao("Finalizando Curso e turma", "Sucesso",
+							credorNome);
+
+					insertAluno(credotAtual, alunoId, alunoNome,
+							alunoNomeSocial, alunoMae, alunoPai, alunoEndereco,
+							alunoCep, alunoBairro, alunoCidade, alunoUf,
+							alunoSexo, alunoDataNascimento, alunoRg, alunoCpf,
+							alunoCelular, alunoResidencial, alunoEmail,
+							credorNome);
+					insertLogIntegracao("Finalizando Aluno", "Sucesso",
+							credorNome);
+
+					insertLogIntegracao(
+							"Finalizando chamada do endpoint de Alunos",
+							"Sucesso", credorNome);
+				} else {
+					insertLogIntegracao(
+							"Finalizando chamada do endpoint de Alunos. Credor já cadastrado",
+							"Erro", credorNome);
+				}
 
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			try {
-				insertLogIntegracao("Erro no chamado do endpoint", "Erro");
+				insertLogIntegracao("Erro no chamado do endpoint", "Erro", "");
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
 		}
+	}
+
+	public boolean getIfCredorExist(String credorCpf) throws Exception {
+
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+
+		int credor = 0;
+
+		try {
+
+			updateTgfNumParc();
+
+			jdbc.openSession();
+
+			String sqlSlt = "SELECT COUNT(0) AS CREDOR FROM TGFPAR WHERE CGC_CPF = ?";
+
+			pstmt = jdbc.getPreparedStatement(sqlSlt);
+			pstmt.setString(1, credorCpf);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+
+				credor = rs.getInt("CREDOR");
+
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+
+		if (credor >= 0) {
+			return true;
+		} else {
+			return false;
+		}
+
 	}
 
 	public void updateTgfNumParc() throws Exception {
@@ -291,15 +558,15 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		}
 
 		if (credorEndereco != null) {
-			if (validarCadastroEndereco(credorEndereco)) {
-				codEnd = insertEndereco(credorEndereco);
+			if (validarCadastroEndereco(credorEndereco, credorNome)) {
+				codEnd = insertEndereco(credorEndereco, credorNome);
 				countEnd = countEnd.add(BigDecimal.ONE);
 			}
 		}
 
 		if (credorBairro != null) {
-			if (validarCadastroBairro(credorBairro)) {
-				codBai = insertBairro(credorBairro);
+			if (validarCadastroBairro(credorBairro, credorNome)) {
+				codBai = insertBairro(credorBairro, credorNome);
 				countBai = countBai.add(BigDecimal.ONE);
 			}
 		}
@@ -325,32 +592,42 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 					+ "			    upper(?), "
 					+ "			    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', "
 					+ "			    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' "
-					+ "			  )), 0), (select codcid from tsicid where TRANSLATE(  "
-					+ "			    upper(descricaocorreio),  "
-					+ "			    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',  "
-					+ "			    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC'  "
-					+ "			  ) like TRANSLATE(  "
-					+ "		    upper(?),  "
-					+ "		    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', "
-					+ "		    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC'  "
-					+ "		  )), ?, ?, ?, SYSDATE, SYSDATE)";
+					+ "			  )), 0), (SELECT codcid FROM tsicid WHERE TRANSLATE("
+					+ "              UPPER(descricaocorreio), "
+					+ "              'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', "
+					+ "              'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') "
+					+ "              LIKE TRANSLATE(UPPER(?), "
+					+ "              'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', "
+					+ "              'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') "
+					+ "              OR SUBSTR(UPPER(descricaocorreio), "
+					+ "              1, INSTR(UPPER(descricaocorreio), ' ') - 1) "
+					+ "              LIKE TRANSLATE(UPPER(?), "
+					+ "              'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', "
+					+ "              'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')), "
+					+ " ?, ?, ?, SYSDATE, SYSDATE)";
 
 			pstmt = jdbc.getPreparedStatement(sqlP);
 			pstmt.setBigDecimal(1, atualCodparc);
 			pstmt.setString(2, credorNome.toUpperCase());
 			pstmt.setString(3, credorNome.toUpperCase());
 			pstmt.setString(4, tipPessoa);
+
 			pstmt.setString(5, credorEndereco);
 			pstmt.setString(6, credorEndereco);
+
 			pstmt.setString(7, credorBairro);
+
 			pstmt.setString(8, credorCidade);
-			pstmt.setString(9, credorCep);
-			pstmt.setString(10, credorCelular);
-			pstmt.setString(11, credorCpf);
+			pstmt.setString(9, credorCidade);
+
+			pstmt.setString(10, credorCep);
+			pstmt.setString(11, credorCelular);
+			pstmt.setString(12, credorCpf);
+
 			pstmt.executeUpdate();
 
 		} catch (SQLException e) {
-			insertLogIntegracao("Erro ao cadastrar credor", "Erro");
+			insertLogIntegracao("Erro ao cadastrar credor", "Erro", credorNome);
 			e.printStackTrace();
 		} finally {
 			if (pstmt != null) {
@@ -362,8 +639,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		return atualCodparc;
 	}
 
-	public void insertCursoTurma(String cursoDescricao, String turmaId)
-			throws Exception {
+	public void insertCursoTurma(String cursoDescricao, String turmaId,
+			String credorNome) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -374,19 +651,19 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		BigDecimal turma = BigDecimal.ZERO;
 
 		if (cursoDescricao != null) {
-			if (validarCadastroCurso(cursoDescricao)) {
-				cursoNovo = insertCurso(cursoDescricao);
+			if (validarCadastroCurso(cursoDescricao, credorNome)) {
+				cursoNovo = insertCurso(cursoDescricao, credorNome);
 			}
 		}
 
 		if (cursoDescricao != null) {
-			if (validarCadastroCursoProj(cursoDescricao)) {
-				cursoNovoProj = insertCursoProj(cursoDescricao);
+			if (validarCadastroCursoProj(cursoDescricao, credorNome)) {
+				cursoNovoProj = insertCursoProj(cursoDescricao, credorNome);
 			}
 		}
 
 		if (turmaId != null) {
-			if (validarCadastroTurma(turmaId)) {
+			if (validarCadastroTurma(turmaId, credorNome)) {
 				try {
 					String ativo = "S";
 					String analitico = "N";
@@ -402,7 +679,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 					pstmt = jdbc.getPreparedStatement(sqlUpdate);
 
 					pstmt.setBigDecimal(1, cursoNovoProj);
-					pstmt.setBigDecimal(2, cursoNovoProj);
+					pstmt.setBigDecimal(2, cursoNovo);
+
 					pstmt.setString(3, turmaId);
 					if (turmaId.length() >= 20) {
 						pstmt.setString(4, turmaId.substring(0, 20));
@@ -416,7 +694,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 				} catch (SQLException e) {
 					e.printStackTrace();
-					insertLogIntegracao("Erro ao cadastrar/validar curso", "Erro");
+					insertLogIntegracao("Erro ao cadastrar/validar curso",
+							"Erro", credorNome);
 				} finally {
 					if (pstmt != null) {
 						pstmt.close();
@@ -428,12 +707,12 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public boolean validarCadastroCurso(String curso) throws Exception {
+	public boolean validarCadastroCurso(String curso, String credorNome)
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
-
 
 		BigDecimal count = BigDecimal.ZERO;
 
@@ -459,7 +738,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			insertLogIntegracao("Erro ao validar se curso já cadastrado",
-					"Erro");
+					"Erro", credorNome);
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -479,15 +758,14 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public boolean validarCadastroCursoProj(String curso) throws Exception {
+	public boolean validarCadastroCursoProj(String curso, String credorNome)
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 
 		BigDecimal count = BigDecimal.ZERO;
-
-
 
 		try {
 
@@ -512,7 +790,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			e.printStackTrace();
 			insertLogIntegracao(
 					"Erro ao validar se curso já cadastrado como projeto",
-					"Erro");
+					"Erro", credorNome);
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -531,7 +809,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		}
 	}
 
-	public boolean validarCadastroTurma(String turma) throws Exception {
+	public boolean validarCadastroTurma(String turma, String credorNome)
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -579,7 +858,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public BigDecimal insertCurso(String cursoDescricao) throws Exception {
+	public BigDecimal insertCurso(String cursoDescricao, String credorNome)
+			throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -593,16 +873,19 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		jdbc.openSession();
 
 		String sqlUpdate = "INSERT INTO TSICUS"
-				+ "(CODCENCUS, DESCRCENCUS, ATIVO, ANALITICO)"
+				+ "(CODCENCUS, CODCENCUSPAI, DESCRCENCUS, ATIVO, ANALITICO, GRAU)"
 				+ "VALUES ((SELECT CODCENCUS + 1 FROM TSICUS "
 				+ "WHERE CODCENCUSPAI = '10101000' "
 				+ "ORDER BY NVL(CODCENCUS, 0) DESC "
-				+ "FETCH FIRST 1 ROW ONLY), ? , ?, ?)";
+				+ "FETCH FIRST 1 ROW ONLY), ? ,? , ?, ?, ?)";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
-		pstmt.setString(1, cursoDescricao);
-		pstmt.setString(2, ativo);
-		pstmt.setString(3, analitico);
+
+		pstmt.setBigDecimal(1, cursoNovo);
+		pstmt.setString(2, cursoDescricao);
+		pstmt.setString(3, ativo);
+		pstmt.setString(4, analitico);
+		pstmt.setInt(5, 4);
 		pstmt.executeUpdate();
 
 		try {
@@ -613,7 +896,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				jdbc.closeSession();
 			}
 		} catch (Exception se) {
-			insertLogIntegracao("Erro cadastrando curso", "Erro");
+			insertLogIntegracao("Erro cadastrando curso", "Erro", credorNome);
 			se.printStackTrace();
 		}
 
@@ -621,12 +904,12 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public BigDecimal insertCursoProj(String cursoDescricao) throws Exception {
+	public BigDecimal insertCursoProj(String cursoDescricao, String credorNome)
+			throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-		
 
 		BigDecimal cursoNovo = getMaxNumProjPai();
 		String codProjPai = "-999999999";
@@ -662,7 +945,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				jdbc.closeSession();
 			}
 		} catch (Exception se) {
-			insertLogIntegracao("Erro cadastrando curso como projeto", "Erro");
+			insertLogIntegracao("Erro cadastrando curso como projeto", "Erro",
+					credorNome);
 			se.printStackTrace();
 		}
 
@@ -714,13 +998,11 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			String alunoBairro, String alunoCidade, String alunoUf,
 			String alunoSexo, String alunoDataNascimento, String alunoRg,
 			String alunoCpf, String alunoCelular, String alunoResidencial,
-			String alunoEmail, String alunoGrauInstrucao, String alunoProfissao)
-			throws Exception {
+			String alunoEmail, String credorNome) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-		
 
 		try {
 			jdbc.openSession();
@@ -728,7 +1010,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			String sqlP = "INSERT INTO AD_ALUNOS ( CODPARC, ID_EXTERNO, NOME, NOME_SOCIAL, NOME_MAE, NOME_PAI, ENDERECO, "
 					+ "CEP, BAIRRO, CIDADE, UF, SEXO, DATA_NASCIMENTO, RG, CPF, TELEFONE_CELULAR, TELEFONE_RESIDENCIAL, "
 					+ "EMAIL, GRAU_INSTRUCAO, PROFISSAO ) "
-					+ "	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?, ?, ? )";
+					+ "	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?,? )";
 
 			pstmt = jdbc.getPreparedStatement(sqlP);
 			pstmt.setBigDecimal(1, credotAtual);
@@ -749,12 +1031,10 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			pstmt.setString(16, alunoCelular);
 			pstmt.setString(17, alunoResidencial);
 			pstmt.setString(18, alunoEmail);
-			pstmt.setString(19, alunoGrauInstrucao);
-			pstmt.setString(20, alunoProfissao);
 			pstmt.executeUpdate();
 
 		} catch (SQLException e) {
-			insertLogIntegracao("Erro cadastrando aluno", "Erro");
+			insertLogIntegracao("Erro cadastrando aluno", "Erro", credorNome);
 			e.printStackTrace();
 		} finally {
 			if (pstmt != null) {
@@ -765,7 +1045,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public boolean validarCadastroEndereco(String endereco) throws Exception {
+	public boolean validarCadastroEndereco(String endereco, String credorNome)
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -799,7 +1080,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			insertLogIntegracao("Erro ao validar se endereço já cadastrado",
-					"Erro");
+					"Erro", credorNome);
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -819,7 +1100,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public BigDecimal insertEndereco(String endereco) throws Exception {
+	public BigDecimal insertEndereco(String endereco, String credorNome)
+			throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -827,22 +1109,21 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		BigDecimal codend = getMaxNumEnd();
 
-
 		jdbc.openSession();
 
 		String sqlUpdate = "INSERT INTO TSIEND"
 				+ "(CODEND, NOMEEND, TIPO, DTALTER)"
-				+ "VALUES "
-				+ "		(?, (SELECT LTRIM(SUBSTR(?, INSTR(?, ' ') + 1)) FROM DUAL), "
-				+ "(SELECT LTRIM(SUBSTR(?, 1,INSTR(?, ' ') - 1)) "
-				+ "FROM DUAL), SYSDATE) ";
+				+ "VALUES (?, (SELECT LTRIM(SUBSTR(?, INSTR(?, ' ') + 1)) FROM DUAL), "
+				+ "(SELECT LTRIM(SUBSTR(?, 1, 2)) FROM DUAL), SYSDATE) ";
+		// + "(SELECT LTRIM(SUBSTR(?, 1,INSTR(? , ' ') - 1)) "
+		// + "FROM DUAL)";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.setBigDecimal(1, codend);
 		pstmt.setString(2, endereco.toUpperCase());
 		pstmt.setString(3, endereco.toUpperCase());
 		pstmt.setString(4, endereco.toUpperCase());
-		pstmt.setString(5, endereco.toUpperCase());
+
 		pstmt.executeUpdate();
 
 		try {
@@ -854,7 +1135,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (Exception se) {
 			se.printStackTrace();
-			insertLogIntegracao("Erro ao cadastrar endereço", "Erro");
+			insertLogIntegracao("Erro ao cadastrar endereço", "Erro",
+					credorNome);
 		}
 
 		return codend;
@@ -927,12 +1209,12 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public boolean validarCadastroBairro(String bairro) throws Exception {
+	public boolean validarCadastroBairro(String bairro, String credorNome)
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
-
 
 		BigDecimal count = BigDecimal.ZERO;
 
@@ -961,7 +1243,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		} catch (SQLException e) {
 			e.printStackTrace();
 			insertLogIntegracao("Erro ao validar se bairro já cadastrado",
-					"Erro");
+					"Erro", credorNome);
 			throw e;
 		} finally {
 			if (rs != null) {
@@ -981,7 +1263,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public BigDecimal insertBairro(String bairro) throws Exception {
+	public BigDecimal insertBairro(String bairro, String credorNome)
+			throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -989,12 +1272,10 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		BigDecimal codbai = getMaxNumBai();
 
-
 		jdbc.openSession();
 
-		String sqlUpdate = "INSERT INTO TSIBAI" 
-				+ "(CODBAI, NOMEBAI, DTALTER)"
-				+ "VALUES " + "		(?, ?, SYSDATE) ";
+		String sqlUpdate = "INSERT INTO TSIBAI (CODBAI, NOMEBAI, DTALTER)"
+				+ "VALUES (?, ?, SYSDATE) ";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.setBigDecimal(1, codbai);
@@ -1010,7 +1291,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			}
 		} catch (Exception se) {
 			se.printStackTrace();
-			insertLogIntegracao("Erro ao bairro endereço", "Erro");
+			insertLogIntegracao("Erro ao bairro endereço", "Erro", credorNome);
 		}
 
 		return codbai;
@@ -1083,8 +1364,8 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public void insertLogIntegracao(String descricao, String status)
-			throws Exception {
+	public void insertLogIntegracao(String descricao, String status,
+			String credorNome) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1092,11 +1373,13 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		jdbc.openSession();
 
+		String descricaoCompleta = descricao + " " + credorNome;
+
 		String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, STATUS)"
 				+ "VALUES (((SELECT NVL(MAX(NUMUNICO), 0) + 1 FROM AD_LOGINTEGRACAO)), ?, SYSDATE, ?)";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
-		pstmt.setString(1, descricao);
+		pstmt.setString(1, descricaoCompleta);
 		pstmt.setString(2, status);
 		pstmt.executeUpdate();
 
@@ -1124,9 +1407,12 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 		HttpURLConnection http = (HttpURLConnection) url.openConnection();
 		http.setConnectTimeout(10000);
-		http.addRequestProperty("User-Agent",
+		http.setRequestProperty("User-Agent",
 				"Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
-		http.setRequestProperty("Content-Type", "application/json");
+		http.setRequestProperty("Content-Type",
+				"application/json; charset=UTF-8");
+		http.setRequestProperty("Authorization", "Bearer "
+				+ "2|VFBUMOCUNitomQYMrwWY7dCaTLts1Lsab3Bktpf5");
 		http.setDoOutput(true);
 		http.setDoInput(true);
 
@@ -1148,6 +1434,11 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 			reader.close();
 		}
 		String response = responseContent.toString();
+
+		System.out.println("response: " + response);
+		System.out.println("responseContent: " + responseContent);
+		System.out.println("responseContent.toString(): "
+				+ responseContent.toString());
 
 		http.disconnect();
 
