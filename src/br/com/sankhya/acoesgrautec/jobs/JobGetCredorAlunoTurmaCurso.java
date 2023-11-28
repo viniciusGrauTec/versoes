@@ -134,7 +134,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				}
 				//
 				cadastrarCredorAlunoCursoTurma(responseString);
-				// pagina++;
+				pagina++;
 				//
 			}
 		} catch (Exception e) {
