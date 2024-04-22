@@ -54,6 +54,155 @@ public class SkwServicoCompras {
 				xmlRequestBody.toString());
 	}
 
+	public String baixarTitulo(String codUsu, String nuFin, String codEmp,
+			String vlrDesdob, String codContaBaixa, int codLancamento,
+			String numDocumento, String codTopBaixa, StringBuffer mensagem)
+			throws Exception {
+		// Composiï¿½ï¿½o da consulta
+		StringBuilder xmlRequestBody = new StringBuilder();
+		SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy");
+		Date dataAtual = new Date();
+
+//		xmlRequestBody.append(" 	<dadosBaixa dtbaixa=\""
+//				+ "24/11/2023"/*formatter.format(dataAtual)*/ + "\" nufin=\"" + nuFin
+//				+ "\" decisao=\"0\" reterImpostosRetroativos=\"true\" ");
+//		xmlRequestBody
+//				.append(" 		resourceID=\"br.com.sankhya.fin.cad.movimentacaoFinanceira\"> ");
+//		xmlRequestBody.append(" 		<variosTiposTitulos/> ");
+//		xmlRequestBody
+//				.append(" 			<valoresBaixa tipoJuros=\"I\" tipoMulta=\"I\" taxaAdm=\"0\" vlrDesconto=\"0\" vlrCalculado=\""
+//						+ 30/*vlrDesdob*/ + "\" vlrDesdob=\"" + 30/*vlrDesdob*/ + "\" ");
+//		xmlRequestBody
+//				.append(" 			vlrDespesasCartorio=\"0\" vlrJuros=\"0\" vlrMulta=\"0\" vlrTotal=\""
+//						+ 30/*vlrDesdob*/
+//						+ "\" vlrMultaNeg=\"0\" vlrJurosNeg=\"0\" jurosLib=\"0\"  ");
+//		xmlRequestBody
+//				.append(" 			multaLib=\"0\" vlrMoeda=\"0\" vlrVarCambial=\"0\"/> ");
+//		xmlRequestBody
+//				.append(" 			<dadosBancarios codConta=\""
+//						+ codContaBaixa
+//						+ "\" codLancamento=\""
+//						+ codLancamento
+//						+ "\" numDocumento=\""
+//						+ numDocumento
+//						+ "\" historico=\"RkFCSU8gR09NRVMgU0lMVkE=\" dataConciliacao=\"\" codTipTit=\"21\" ");
+//		xmlRequestBody
+//				.append(" 			vlrMoedaBaixa=\"0,00000\" contaParaCaixaAberto=\"0\"/> ");
+//		xmlRequestBody.append(" 		<dadosAdicionais codEmpresa=\"" + codEmp
+//				+ "\" codTipoOperacao=\"" + codTopBaixa + "\"/> ");
+//		xmlRequestBody
+//				.append(" 			<impostos inssRetido=\"false\" irrfRetido=\"true\" issRetido=\"false\" outrosImpostos=\"0\" outrosImpostosMensais=\"0\"  ");
+//		xmlRequestBody
+//				.append(" 				vlrInss=\"0\" vlrIrrf=\"0\" vlrIss=\"0\" vlrVendor=\"0\" baseDevida=\"0\"/> ");
+//		xmlRequestBody
+//				.append(" 			<imprimeRecibo paramImprimeBoleto=\"false\"/> ");
+//		xmlRequestBody.append(" 	</dadosBaixa> ");
+//		xmlRequestBody.append(" 	<clientEventList> ");
+//		xmlRequestBody
+//				.append(" 				<clientEvent>br.com.sankhya.mgefin.solicitacao.liberacao.orcamento</clientEvent> ");
+//		xmlRequestBody
+//				.append(" 				<clientEvent>br.com.sankhya.mgefin.financeiro.Autentica</clientEvent> ");
+//		xmlRequestBody
+//				.append("		 		<clientEvent>br.com.sankhya.mgefin.mensagem.metas</clientEvent> ");
+//		xmlRequestBody
+//				.append(" 				<clientEvent>br.com.sankhya.mgefin.avisa.validacao.numero.financeiro</clientEvent> ");
+//		xmlRequestBody
+//				.append(" 				<clientEvent>br.com.sankhya.mgecom.pesquisamov.mensagem</clientEvent> ");
+//		xmlRequestBody
+//				.append("		 		<clientEvent>br.com.sankhya.mgefin.alteracao.boleto.agrupado.registrado</clientEvent> ");
+//		xmlRequestBody
+//				.append(" 				<clientEvent>br.com.sankhya.mgefin.financeiro.LibLimite</clientEvent> ");
+//		xmlRequestBody.append(" 	</clientEventList> ");
+		
+		xmlRequestBody.append("<dadosBaixa dtbaixa=\"27/11/2023\" nufin=\"111095\" decisao=\"0\" reterImpostosRetroativos=\"true\" resourceID=\"br.com.sankhya.fin.cad.movimentacaoFinanceira\"> "
+			+"		<variosTiposTitulos/> "
+			+"		<valoresBaixa tipoJuros=\"I\" tipoMulta=\"I\" taxaAdm=\"0\" vlrDesconto=\"0\" vlrCalculado=\"30.63\" vlrDesdob=\"30\" vlrDespesasCartorio=\"0\" vlrJuros=\"0.03\" vlrMulta=\"0.6\" vlrTotal=\"30.63\" vlrMultaNeg=\"0\" vlrJurosNeg=\"0\" jurosLib=\"0\" multaLib=\"0\" vlrMoeda=\"0\" vlrVarCambial=\"0\"/> "
+			+"		<dadosBancarios codConta=\"15\" codLancamento=\"1\" numDocumento=\"0\" historico=\"RkFCSU8gR09NRVMgU0lMVkE=\" dataConciliacao=\"\" codTipTit=\"21\" vlrMoedaBaixa=\"0,00000\" contaParaCaixaAberto=\"0\"/> "
+			+"		<dadosAdicionais codEmpresa=\"4\" codTipoOperacao=\"1400\"/> "
+			+"		<impostos inssRetido=\"false\" irrfRetido=\"false\" issRetido=\"false\" outrosImpostos=\"0\" outrosImpostosMensais=\"0\" vlrInss=\"0\" vlrIrrf=\"0\" vlrIss=\"0\" vlrVendor=\"0\" baseDevida=\"0\"/>"
+			+"		<imprimeRecibo paramImprimeBoleto=\"false\"/> "
+			+"	</dadosBaixa>"
+			+"	<clientEventList>"
+			+"		<clientEvent>br.com.sankhya.mgefin.financeiro.LibLimite</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgefin.alteracao.boleto.agrupado.registrado</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgefin.solicitacao.liberacao.orcamento</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgefin.financeiro.Autentica</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgecom.pesquisamov.mensagem</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgefin.mensagem.metas</clientEvent> "
+			+"		<clientEvent>br.com.sankhya.mgefin.avisa.validacao.numero.financeiro</clientEvent> "
+			+"	</clientEventList>");
+		
+		System.out.println("Corpo da requisição de baixa: \n" + xmlRequestBody);
+		
+		// Chamada ao serviï¿½o da Sankhya
+		serviceInvoker.call("BaixaFinanceiroSP.baixarTitulo", "mge",
+				xmlRequestBody.toString(), codUsu, "br.com.sankhya.fin.cad.movimentacaoFinanceira", "MovimentacaoFinanceira");
+		return xmlRequestBody.toString();
+
+	}
+	
+	public void inserirIntegracaoPesagem(String texto)
+			throws Exception {
+		// Composicao da consulta
+		StringBuilder xmlRequestBody = new StringBuilder();
+		xmlRequestBody.append(" <dataSet rootEntity='AD_ADINTEPESA' includePresentationFields='S' datasetid='1701104526101_1'>    ");
+		xmlRequestBody.append(" 	<entity path=''>                                                                            ");
+		xmlRequestBody.append(" 		<fieldset list='*'/>                                                                    ");
+		xmlRequestBody.append(" 	</entity>                                                                                   ");
+		xmlRequestBody.append(" 	<dataRow>                                                                                   ");
+		xmlRequestBody.append(" 		<localFields>                                                                           ");
+		xmlRequestBody.append(" 			<TESTE><![CDATA["+ texto +"]]></TESTE>                                              ");
+		xmlRequestBody.append(" 		</localFields>                                                                          ");
+		xmlRequestBody.append(" 	</dataRow>                                                                                  ");
+		xmlRequestBody.append(" </dataSet>                                                                                      ");
+		xmlRequestBody.append(" <clientEventList/>                                                                              ");
+
+		serviceInvoker.call("CRUDServiceProvider.saveRecord", "mge",
+				xmlRequestBody.toString());
+
+	}
+	
+	public String parcelarTitulo(String vencimento, String codUsu, 
+			int parcelas, String tipTit)
+					throws Exception {
+		// Composiï¿½ï¿½o da consulta
+		StringBuilder xmlRequestBody = new StringBuilder();
+		
+		xmlRequestBody.append("<parcel save='S' nroparcel='"+parcelas+"' cpyrat='N' "
+				+ "txjur='' txmul='' hist='S' calc='N' "
+						+ "considerarEntradaCalcJuroMulta='N' "
+								+ "tip='"+tipTit+"' "
+										+ "jur='1' "
+												+ "mul='1' "
+														+ "calcDesc='0' "
+																+ "usaParamJUROSPCP='N' "
+																		+ "desdobInicial='1' "
+																				+ "varCambialJurMult='N' "
+																						+ "zerarJuroMulta='N' "
+																								+ "chkComEntrada='N' "
+																										+ "recalcularTaxaAdministradora='S' "
+																												+ "priceJurMulDesc='N'> ");
+		xmlRequestBody.append("		<freq value='5' dias='0'/> ");
+		xmlRequestBody.append("		<venc value='3' nova='"+vencimento+"'/> ");
+		xmlRequestBody.append("		<tits nufins='10243'/> ");
+		xmlRequestBody.append("		<negoc value='1'/> ");
+		xmlRequestBody.append("	</parcel> ");
+		xmlRequestBody.append("	<clientEventList> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.financeiro.Autentica</clientEvent> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.alteracao.boleto.agrupado.registrado</clientEvent> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.financeiro.LibLimite</clientEvent> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.solicitacao.liberacao.orcamento</clientEvent> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.avisa.validacao.numero.financeiro</clientEvent> ");
+		xmlRequestBody.append("		<clientEvent>br.com.sankhya.mgefin.mensagem.metas</clientEvent> ");
+		xmlRequestBody.append("	</clientEventList>");
+		
+		// Chamada ao serviï¿½o da Sankhya
+		serviceInvoker.call("ParcelamentoSP.parcelar", "mge",
+				xmlRequestBody.toString(), codUsu);
+		return xmlRequestBody.toString();
+		
+	}
+
 	/*
 	 * A ação de criar os documentos relacionados
 	 */

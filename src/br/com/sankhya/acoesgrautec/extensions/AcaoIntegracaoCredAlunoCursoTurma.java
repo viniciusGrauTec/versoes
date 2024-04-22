@@ -1,45 +1,31 @@
-package br.com.sankhya.acoesgrautec.jobs;
+package br.com.sankhya.acoesgrautec.extensions;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.cuckoo.core.ScheduledAction;
-import org.cuckoo.core.ScheduledActionContext;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import br.com.sankhya.acoesgrautec.services.SkwServicoFinanceiro;
-import br.com.sankhya.acoesgrautec.util.EnviromentUtils;
-import br.com.sankhya.acoesgrautec.util.LogCatcher;
-import br.com.sankhya.acoesgrautec.util.LogConfiguration;
+import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava;
+import br.com.sankhya.extensions.actionbutton.ContextoAcao;
 import br.com.sankhya.jape.EntityFacade;
-import br.com.sankhya.jape.core.JapeSession;
-import br.com.sankhya.jape.core.JapeSession.SessionHandle;
 import br.com.sankhya.jape.dao.JdbcWrapper;
-import br.com.sankhya.jape.vo.DynamicVO;
-import br.com.sankhya.jape.wrapper.JapeFactory;
-import br.com.sankhya.jape.wrapper.JapeWrapper;
-import br.com.sankhya.modelcore.MGEModelException;
-import br.com.sankhya.modelcore.util.DynamicEntityNames;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
-import br.com.sankhya.modelcore.util.SWRepositoryUtils;
 
-public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
+public class AcaoIntegracaoCredAlunoCursoTurma implements AcaoRotinaJava {
 
 	@Override
-	public void onTime(ScheduledActionContext arg0) {
+	public void doAction(ContextoAcao contexto) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -47,6 +33,21 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal codEmp = BigDecimal.ZERO;
+		
+		String dtIni = contexto.getParam("DTINI").toString();
+		String dtFin = contexto.getParam("DTFIN").toString();
+		
+		SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+		SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd");
+        
+		Date dateIni = inputFormat.parse(dtIni);
+		Date dateFin = inputFormat.parse(dtFin);
+		
+        String DateFIni = outputFormat.format(dateIni);
+        String DateFFin = outputFormat.format(dateFin);
+		
+		System.out.println("Data ini: " + DateFIni);
+		System.out.println("Data final: " + DateFFin);
 
 		String url = "";
 		String token = "";
@@ -72,7 +73,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
 
-				iterarEndpoint(url, token, codEmp);
+				iterarEndpoint(url, token, codEmp, DateFIni, DateFFin);
 
 			}
 
@@ -105,7 +106,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 	}
 
-	public void iterarEndpoint(String url, String token, BigDecimal codEmp)
+	public void iterarEndpoint(String url, String token, BigDecimal codEmp, String dataIni, String dataFin)
 			throws Exception {
 
 		int pagina = 1;
@@ -117,13 +118,11 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 
 				String[] response = apiGet(
 						url + "/alunos"
-						
-						+ "?dataInicial=2024-01-01 00:00:00&dataFinal=2024-01-31 23:59:59"
-								+ "&pagina="
+								+ "?pagina="
 								+ pagina
 								// + "&quantidade="
 								// + quantidade
-								,
+								+ "&dataInicial="+dataIni+" 00:00:00&dataFinal="+dataFin+" 23:59:59",
 						token);
 				//
 				int status = Integer.parseInt(response[0]);
@@ -141,7 +140,7 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 				String responseString = response[1];
 				System.out.println("response string: " + responseString);
 				//
-				if (responseString.equals("[]") || pagina == 50) {
+				if (responseString.equals("[]") || pagina == 2) {
 					System.out.println("Entrou no if da quebra");
 					break; // Sai do loop se a resposta estiver vazia
 				}
@@ -1513,4 +1512,5 @@ public class JobGetCredorAlunoTurmaCurso implements ScheduledAction {
 		return new String[] { Integer.toString(status), response };
 
 	}
+
 }

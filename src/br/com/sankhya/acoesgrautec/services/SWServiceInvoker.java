@@ -89,9 +89,11 @@ public class SWServiceInvoker {
 			jsessionid = doLoginMd5();
 		else
 			jsessionid = doLogin();
-
+		
 		URLConnection conn = openConn(serviceName, module, jsessionid);
-
+		
+		System.out.println("Connect: " + conn);
+		
 		Document docResp = (Document) callService(conn, body, serviceName);
 
 		doLogout(jsessionid);
@@ -132,6 +134,23 @@ public class SWServiceInvoker {
 
 		doLogout(jsessionid);
 
+		return docResp;
+	}
+	
+	public Document call(String serviceName, String module, String body,
+			String usuLogado, String resourceId, String application) throws Exception {
+		Object[] obj = EnviromentUtils.getDadosUser(usuLogado);
+		this.user = (String) obj[0];
+		this.md5 = (String) obj[1];
+		this.criptedPass = true;
+		String jsessionid = doLoginMd5();
+		
+		URLConnection conn = openConn(serviceName, module, jsessionid, resourceId, application);
+		
+		Document docResp = (Document) callService(conn, body, serviceName);
+		
+		doLogout(jsessionid);
+		
 		return docResp;
 	}
 
@@ -209,7 +228,10 @@ public class SWServiceInvoker {
 			} else {
 				bodyBuf.append(interno).append(": {}");
 			}
-
+			
+			System.out.println("Conn: " + conn);
+			System.out.println("body: " + bodyBuf);
+			
 			JsonObject docResp = (JsonObject) callService(conn,
 					bodyBuf.toString(), "MobileLoginSP.login");
 
@@ -334,7 +356,9 @@ public class SWServiceInvoker {
 			if (debug) {
 				System.out.println(requestBody);
 			}
-
+			
+			System.out.println("RequestBody do call: " + requestBody);
+			
 			wout.write(requestBody);
 
 			wout.flush();
@@ -386,9 +410,13 @@ public class SWServiceInvoker {
 					error.initCause(e);
 					throw error;
 				}
-
+				
+				
+				
 				checkResultStatus(nodes.item(0));
-
+				
+				System.out.println("Print doc login: " + doc);
+				
 				return doc;
 			}
 		} finally {
@@ -458,7 +486,9 @@ public class SWServiceInvoker {
 		}
 
 		URL u = new URL(buf.toString());
-
+		
+		System.out.println("URL: " + u);
+		
 		URLConnection uc = u.openConnection();
 		HttpURLConnection connection = (HttpURLConnection) uc;
 
@@ -478,7 +508,74 @@ public class SWServiceInvoker {
 		}
 
 		connection.setRequestProperty("User-Agent", "SWServiceInvoker");
+		
+		System.out.println("Connection: " + connection);
+		
+		System.out.println("Conexão: " +connection );
+		
+		return connection;
+	}
+	
+	private URLConnection openConn(String serviceName, String module,
+			String sessionID, String resourceId, String application) throws Exception {
+		StringBuffer buf = new StringBuffer();
+		
+		buf.append(domain).append(domain.endsWith("/") ? "" : "/")
+		.append(module == null ? "mge" : module).append("/service.sbr");
+		
+		/*
+		 * if (sessionID != null) {
+		 * buf.append(";JSESSIONID=").append(sessionID); }
+		 */
+		
+		buf.append("?serviceName=").append(serviceName);
+		
+		if (!"".equals(application)) {
+			buf.append("&application=").append(application);
+		}
+		
+		if (sessionID != null) {
+			buf.append("&mgeSession=").append(sessionID);
+		}
 
+		if (!"".equals(resourceId)) {
+			buf.append("&resourceID=").append(resourceId);
+		}
+		
+		if (useJson) {
+			buf.append("&outputType=json");
+		}
+		
+		URL u = new URL(buf.toString());
+		//globalID=1196174C56AAE2268520D2DD4C522B2B& counter=54& &vss=1
+		u = new URL("http://127.0.0.1:8501/mge/service.sbr?serviceName=BaixaFinanceiroSP.baixarTitulo&application=MovimentacaoFinanceira&preventTransform=false&mgeSession="+sessionID+"&resourceID=br.com.sankhya.fin.cad.movimentacaoFinanceira");
+		
+		System.out.println("URL: " + u);
+		
+		URLConnection uc = u.openConnection();
+		HttpURLConnection connection = (HttpURLConnection) uc;
+		
+		connection.setDoOutput(true);
+		connection.setDoInput(true);
+		connection.setRequestMethod("POST");
+		connection.setRequestProperty("content-type", "text/xml");
+		
+		if (useJson) {
+			connection.setRequestProperty("content-type", "application/json");
+		} else {
+			connection.setRequestProperty("content-type", "text/xml");
+		}
+		
+		if (sessionID != null) {
+			connection.setRequestProperty("Cookie", "JSESSIONID=" + sessionID);
+		}
+		
+		connection.setRequestProperty("User-Agent", "SWServiceInvoker");
+		
+		System.out.println("Connection: " + connection);
+		
+		System.out.println("Conexão: " +connection );
+		
 		return connection;
 	}
 

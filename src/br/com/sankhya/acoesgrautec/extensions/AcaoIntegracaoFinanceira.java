@@ -1,7 +1,6 @@
-package br.com.sankhya.acoesgrautec.jobs;
+package br.com.sankhya.acoesgrautec.extensions;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.net.HttpURLConnection;
@@ -12,39 +11,38 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.cuckoo.core.ScheduledAction;
-import org.cuckoo.core.ScheduledActionContext;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import javax.net.ssl.HttpsURLConnection;
-
-import br.com.sankhya.acoesgrautec.util.LogCatcher;
-import br.com.sankhya.acoesgrautec.util.LogConfiguration;
-import br.com.sankhya.acoesgrautec.services.SkwServicoCompras;
+import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava;
+import br.com.sankhya.extensions.actionbutton.ContextoAcao;
 import br.com.sankhya.jape.EntityFacade;
-import br.com.sankhya.jape.core.JapeSession;
-import br.com.sankhya.jape.core.JapeSession.SessionHandle;
 import br.com.sankhya.jape.dao.JdbcWrapper;
-import br.com.sankhya.jape.vo.DynamicVO;
-import br.com.sankhya.jape.wrapper.JapeFactory;
-import br.com.sankhya.jape.wrapper.JapeWrapper;
-import br.com.sankhya.modelcore.util.DynamicEntityNames;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
-import br.com.sankhya.modelcore.util.SWRepositoryUtils;
 
-public class JobGetTitulos implements ScheduledAction {
+public class AcaoIntegracaoFinanceira implements AcaoRotinaJava {
 
 	@Override
-	public void onTime(ScheduledActionContext arg0) {
+	public void doAction(ContextoAcao contexto) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
+		
+		String dtIni = contexto.getParam("DTINI").toString();
+		String dtFin = contexto.getParam("DTFIN").toString();
+		
+		SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+		SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd");
+        
+		Date dateIni = inputFormat.parse(dtIni);
+		Date dateFin = inputFormat.parse(dtFin);
+		
+        String DateFIni = outputFormat.format(dateIni);
+        String DateFFin = outputFormat.format(dateFin);
 
 		BigDecimal codEmp = BigDecimal.ZERO;
 
@@ -70,7 +68,7 @@ public class JobGetTitulos implements ScheduledAction {
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
 
-				cadastrarFinanceiro(url, token, codEmp);
+				cadastrarFinanceiro(url, token, codEmp, DateFIni, DateFFin);
 
 			}
 
@@ -101,8 +99,9 @@ public class JobGetTitulos implements ScheduledAction {
 			jdbc.closeSession();
 		}
 	}
-	
-	public void cadastrarFinanceiro(String url, String token, BigDecimal codemp) throws Exception{
+
+	public void cadastrarFinanceiro(String url, String token, BigDecimal codemp, String DateFIni, String DateFFin)
+			throws Exception {
 
 		SimpleDateFormat formatoEntrada = new SimpleDateFormat(
 				"yyyy-MM-dd HH:mm:ss.SSS");
@@ -138,7 +137,7 @@ public class JobGetTitulos implements ScheduledAction {
 						// + "&dataInicial=2023-04-19 00:00:00"
 						// + "&dataFinal=2023-10-24 00:00:00"
 						+ "matricula=" + aluno
-						+ "&dataInicial=2024-01-01 00:00:00&dataFinal=2024-01-31 23:59:59", token);
+						+ "&dataInicial="+DateFIni+" 00:00:00&dataFinal="+DateFFin+" 23:59:59", token);
 
 				String responseString = response[1];
 				String responseStatus = response[0];
