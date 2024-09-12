@@ -3,10 +3,12 @@ package br.com.sankhya.acoesgrautec.jobs;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.dao.JdbcWrapper;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
@@ -16,6 +18,9 @@ import java.net.URL;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.cuckoo.core.ScheduledAction;
 import org.cuckoo.core.ScheduledActionContext;
 
@@ -30,18 +35,21 @@ public class JobGetCredorAlunoTurmaCurso
     ResultSet rs = null;
     
     BigDecimal codEmp = BigDecimal.ZERO;
+    BigDecimal idCarga = BigDecimal.ZERO;
     
     String url = "";
     String token = "";
+    String matricula = "";
     
-    System.out.println("teste");
+    System.out.println("Iniciou cadastro dos alunos empresa 4");
     try
     {
       jdbc.openSession();
       
-      String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+      String queryEmp3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO, 'N') = 'N' AND ROWNUM <= 300";
+      String queryEmp4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO, 'N') = 'N' AND ROWNUM <= 300";
       
-      pstmt = jdbc.getPreparedStatement(query);
+      pstmt = jdbc.getPreparedStatement(queryEmp3);
       
       rs = pstmt.executeQuery();
       while (rs.next())
@@ -49,12 +57,18 @@ public class JobGetCredorAlunoTurmaCurso
         System.out.println("While principal");
         
         codEmp = rs.getBigDecimal("CODEMP");
+        idCarga = rs.getBigDecimal("IDCARGA");
         
         url = rs.getString("URL");
         token = rs.getString("TOKEN");
+        matricula = rs.getString("MATRICULA");
         
-        iterarEndpoint(url, token, codEmp);
+        iterarEndpoint(url, token, codEmp, matricula);
+        updateCarga(idCarga);
       }
+      
+      System.out.println("Finalizou cadastro dos alunos empresa 4");
+      
     }
     catch (Exception e)
     {
@@ -96,10 +110,30 @@ public class JobGetCredorAlunoTurmaCurso
     }
   }
   
-  public void iterarEndpoint(String url, String token, BigDecimal codEmp)
+  public void iterarEndpoint(String url, String token, BigDecimal codEmp, String matricula)
     throws Exception
   {
-    int pagina = 1;
+    //int pagina = 1;
+	
+    Date dataAtual = new Date();
+      
+    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+      
+    String dataFormatada = formato.format(dataAtual);
+      
+	  
+    int paginaInicio = 1;
+    int paginaFim = 3;
+    /*int paginaAtual = getPagina();
+    
+    if(paginaAtual == 0){
+    	paginaInicio = 1;
+    	paginaFim = 30;
+    }else{
+    	paginaInicio = paginaAtual;
+    	paginaFim = paginaAtual + 30;
+    }*/
+    
     try
     {
       for (;;)
@@ -109,35 +143,31 @@ public class JobGetCredorAlunoTurmaCurso
         String[] response = apiGet(
           url + "/alunos" + 
           
-          "?dataInicial=2024-01-01 00:00:00&dataFinal=2024-01-31 23:59:59" + 
+          //"?dataInicial="+dataFormatada+" 00:00:00&dataFinal="+dataFormatada+" 23:59:59" + 
+          "?matricula=" + matricula + 
           "&pagina=" + 
-          pagina, 
-          
-
-
+          paginaInicio, 
           token);
         
         int status = Integer.parseInt(response[0]);
         System.out.println("Status teste: " + status);
-        System.out.println("pagina: " + pagina);
+        System.out.println("pagina: " + paginaInicio);
         
-
-
-
-
-
-
-
-
         String responseString = response[1];
         System.out.println("response string: " + responseString);
-        if ((responseString.equals("[]")) || (pagina == 50))
+        if ((responseString.equals("[]")) || (paginaInicio == paginaFim))
         {
           System.out.println("Entrou no if da quebra");
+         /* if(responseString.equals("[]")){
+        	  insertUltPagina(paginaInicio); 
+          }else{
+        	  insertUltPagina(paginaFim); 
+          }*/
+          
           break;
         }
         cadastrarCredorAlunoCursoTurma(responseString, codEmp);
-        pagina++;
+        paginaInicio++;
       }
     }
     catch (Exception e)
@@ -146,194 +176,318 @@ public class JobGetCredorAlunoTurmaCurso
     }
   }
   
-  public void cadastrarCredorAlunoCursoTurma(String responseString, BigDecimal codEmp)
+	private void updateAcaoAgendada() throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
+	    try
+	    {
+	      jdbc.openSession();
+	      
+	      String sqlUpd = "UPDATE TSIAAG SET ATIVO = 'N' WHERE NUAAG = 35";
+	      
+	      pstmt = jdbc.getPreparedStatement(sqlUpd);
+	      pstmt.executeUpdate();
+	    }
+	    catch (SQLException e)
+	    {
+	      e.printStackTrace();
+	    }
+	    finally
+	    {
+	      if (pstmt != null) {
+	        pstmt.close();
+	      }
+	      jdbc.closeSession();
+	    }
+	  }
+	
+	private void updateCarga(BigDecimal idCarga) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try
+		{
+			jdbc.openSession();
+			
+			String sqlUpd = "UPDATE AD_CARGAALUNOS SET INTEGRADO = 'S' WHERE IDCARGA = " + idCarga;
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpd);
+			pstmt.executeUpdate();
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+	}
+
+	private void insertUltPagina(int pagina) throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
+	    try
+	    {
+	      jdbc.openSession();
+	      
+	      String sqlUpd = "INSERT INTO AD_BLOCOPAGINACAO (IDPAGINA, PAGINAATUAL) VALUES ((SELECT NVL(MAX(IDPAGINA), 0) + 1 FROM AD_BLOCOPAGINACAO), "+pagina+")";
+	      
+	      pstmt = jdbc.getPreparedStatement(sqlUpd);
+	      pstmt.executeUpdate();
+	    }
+	    catch (SQLException e)
+	    {
+	      e.printStackTrace();
+	    }
+	    finally
+	    {
+	      if (pstmt != null) {
+	        pstmt.close();
+	      }
+	      jdbc.closeSession();
+	    }
+	  }
+
+	public int getPagina() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+
+		int pagina = 0;
+		try {
+
+			jdbc.openSession();
+
+			String sqlSlt = "SELECT NVL((SELECT PAGINAATUAL FROM AD_BLOCOPAGINACAO WHERE IDPAGINA = (SELECT MAX(IDPAGINA) FROM AD_BLOCOPAGINACAO)), 0) AS PAGINA FROM DUAL";
+
+			pstmt = jdbc.getPreparedStatement(sqlSlt);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+				pagina = rs.getInt("PAGINA");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			if (rs != null) {
+				rs.close();
+			}
+			jdbc.closeSession();
+		}
+
+		return pagina;
+	}
+
+public void cadastrarCredorAlunoCursoTurma(String responseString, BigDecimal codEmp)
   {
     System.out.println("Cadastro principal");
     try
-    {
-      JsonParser parser = new JsonParser();
-      JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
-      for (JsonElement jsonElement : jsonArray)
-      {
-        JsonObject jsonObject = jsonElement.getAsJsonObject();
-        
-        String credorNome = jsonObject.get("credor_nome").isJsonNull() ? null : 
-          jsonObject.get("credor_nome").getAsString();
-        String credorCpf = jsonObject.get("credor_cpf").isJsonNull() ? null : 
-          jsonObject.get("credor_cpf").getAsString();
-        String credorEndereco = jsonObject.get("credor_endereco")
-          .isJsonNull() ? null : jsonObject
-          .get("credor_endereco").getAsString();
-        String credorCep = jsonObject.get("credor_endereco_cep")
-          .isJsonNull() ? null : jsonObject.get(
-          "credor_endereco_cep").getAsString();
-        String credorBairro = jsonObject.get("credor_endereco_bairro")
-          .isJsonNull() ? null : jsonObject.get(
-          "credor_endereco_bairro").getAsString();
-        String credorCidade = jsonObject.get("credor_endereco_cidade")
-          .isJsonNull() ? null : jsonObject.get(
-          "credor_endereco_cidade").getAsString();
-        String credorUf = jsonObject.get("credor_endereco_uf")
-          .isJsonNull() ? null : jsonObject.get(
-          "credor_endereco_uf").getAsString();
-        String credorResidencial = jsonObject.get(
-          "credor_telefone_residencial").isJsonNull() ? null : 
-          jsonObject.get("credor_telefone_residencial")
-          .getAsString();
-        String credorCelular = jsonObject
-          .get("credor_telefone_celular").isJsonNull() ? null : 
-          jsonObject.get("credor_telefone_celular")
-          .getAsString();
-        String credorComercial = jsonObject.get(
-          "credor_telefone_comercial").isJsonNull() ? null : 
-          jsonObject.get("credor_telefone_comercial")
-          .getAsString();
-        
-        String alunoId = jsonObject.get("aluno_id").isJsonNull() ? null : 
-          jsonObject.get("aluno_id").getAsString();
-        String alunoNome = jsonObject.get("aluno_nome").isJsonNull() ? null : 
-          jsonObject.get("aluno_nome").getAsString();
-        String alunoNomeSocial = jsonObject.get("aluno_nome_social")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_nome_social").getAsString();
-        String alunoEndereco = jsonObject.get("aluno_endereco")
-          .isJsonNull() ? null : jsonObject.get("aluno_endereco")
-          .getAsString();
-        String alunoCep = jsonObject.get("aluno_endereco_cep")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_endereco_cep").getAsString();
-        String alunoBairro = jsonObject.get("aluno_endereco_bairro")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_endereco_bairro").getAsString();
-        String alunoCidade = jsonObject.get("aluno_endereco_cidade")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_endereco_cidade").getAsString();
-        String alunoUf = jsonObject.get("aluno_endereco_uf")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_endereco_uf").getAsString();
-        String alunoSexo = jsonObject.get("aluno_sexo").isJsonNull() ? null : 
-          jsonObject.get("aluno_sexo").getAsString();
-        String alunoDataNascimento = jsonObject.get(
-          "aluno_data_nascimento").isJsonNull() ? null : 
-          jsonObject.get("aluno_data_nascimento").getAsString();
-        String alunoRg = jsonObject.get("aluno_rg").isJsonNull() ? null : 
-          jsonObject.get("aluno_rg").getAsString();
-        String alunoCpf = jsonObject.get("aluno_cpf").isJsonNull() ? null : 
-          jsonObject.get("aluno_cpf").getAsString();
-        String alunoCelular = jsonObject.get("aluno_telefone_celular")
-          .isJsonNull() ? null : jsonObject.get(
-          "aluno_telefone_celular").getAsString();
-        String alunoResidencial = jsonObject.get(
-          "aluno_telefone_residencial").isJsonNull() ? null : 
-          jsonObject.get("aluno_telefone_residencial")
-          .getAsString();
-        String alunoEmail = jsonObject.get("aluno_email").isJsonNull() ? null : 
-          jsonObject.get("aluno_email").getAsString();
-        
-        String cursoDescricao = jsonObject.getAsJsonArray("cursos")
-          .get(0).getAsJsonObject().get("curso_descricao")
-          .isJsonNull() ? null : jsonObject
-          .getAsJsonArray("cursos").get(0).getAsJsonObject()
-          .get("curso_descricao").getAsString();
-        
-        String cursoId = jsonObject.getAsJsonArray("cursos").get(0)
-          .getAsJsonObject().get("curso_id").isJsonNull() ? null : 
-          jsonObject.getAsJsonArray("cursos").get(0)
-          .getAsJsonObject().get("curso_id")
-          .getAsString();
-        
-        String turmaId = jsonObject.getAsJsonArray("cursos").get(0)
-          .getAsJsonObject().get("turma_id").isJsonNull() ? null : 
-          jsonObject.getAsJsonArray("cursos").get(0)
-          .getAsJsonObject().get("turma_id")
-          .getAsString();
-        
-        String alunoSituacao = jsonObject.getAsJsonArray("cursos")
-          .get(0).getAsJsonObject().get("situacao_descricao")
-          .isJsonNull() ? null : jsonObject
-          .getAsJsonArray("cursos").get(0).getAsJsonObject()
-          .get("situacao_descricao").getAsString();
-        String alunoSituacaoId = jsonObject.getAsJsonArray("cursos")
-          .get(0).getAsJsonObject().get("situacao_id")
-          .isJsonNull() ? null : jsonObject
-          .getAsJsonArray("cursos").get(0).getAsJsonObject()
-          .get("situacao_id").getAsString();
-        
-        boolean credor = getIfCredorExist(credorCpf);
-        boolean aluno = getIfAlunoExist(alunoCpf);
-        if ((alunoSituacaoId.equalsIgnoreCase("LFI")) || 
-          (alunoSituacaoId.equalsIgnoreCase("LFR")) || 
-          (alunoSituacaoId.equalsIgnoreCase("MT")) || 
-          (alunoSituacaoId.equalsIgnoreCase("TF")) || 
-          (alunoSituacaoId.equalsIgnoreCase("NC")))
-        {
-          System.out.println("entrou na validação de cadastro");
-          if (!credor)
-          {
-            BigDecimal credotAtual = insertCredor(credorNome, 
-              credorCpf, credorEndereco, credorCep, 
-              credorBairro, credorCidade, credorUf, 
-              credorResidencial, credorCelular, 
-              credorComercial, alunoNome);
-            insertLogIntegracao("Credor Cadastrado: ", "Sucesso", 
-              credorNome, "");
-            
-            insertCursoTurma(cursoDescricao, cursoId, turmaId, 
-              credorNome, alunoNome, codEmp);
-            
-            System.out.println("ID EXTERNO: " + cursoId);
-            insertLogIntegracao("Curso e turma cadastrado", 
-              "Sucesso", credorNome, alunoNome);
-            if (!aluno)
-            {
-              insertAluno(credotAtual, alunoId, alunoNome, 
-                alunoNomeSocial, alunoEndereco, alunoCep, 
-                alunoBairro, alunoCidade, alunoUf, 
-                alunoSexo, alunoDataNascimento, alunoRg, 
-                alunoCpf, alunoCelular, alunoResidencial, 
-                alunoEmail, alunoSituacao, alunoSituacaoId, 
-                credorNome, codEmp, cursoId);
-              insertLogIntegracao("Aluno Cadastro: ", "Sucesso", 
-                "", alunoNome);
-            }
-            insertLogIntegracao(
-              "Finalizando chamada do endpoint de Alunos", 
-              "Sucesso", "", "");
-          }
-          else
-          {
-            insertLogIntegracao("Credor já cadastrado", "Aviso", 
-              credorNome, "");
-            
-            BigDecimal credorCadastrado = getCredorCadastrado(credorCpf);
-            
-            insertCursoTurma(cursoDescricao, cursoId, turmaId, 
-              credorNome, alunoNome, codEmp);
-            insertLogIntegracao("Curso e turma cadastrado", 
-              "Sucesso", "", "");
-            if (!aluno)
-            {
-              insertAluno(credorCadastrado, alunoId, alunoNome, 
-                alunoNomeSocial, alunoEndereco, alunoCep, 
-                alunoBairro, alunoCidade, alunoUf, 
-                alunoSexo, alunoDataNascimento, alunoRg, 
-                alunoCpf, alunoCelular, alunoResidencial, 
-                alunoEmail, alunoSituacao, alunoSituacaoId, 
-                credorNome, codEmp, cursoId);
-              insertLogIntegracao("Aluno já Cadastro ", "Aviso", 
-                "", alunoNome);
-            }
-            insertLogIntegracao(
-              "Finalizando chamada do endpoint de Alunos", 
-              "Sucesso", credorNome, alunoNome);
-          }
-        }
-        else
-        {
-          System.out.println("Aluno com situação diferente do esperado");
-        }
-      }
-    }
+ {
+			JsonParser parser = new JsonParser();
+			JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
+			for (JsonElement jsonElement : jsonArray) {
+				JsonObject jsonObject = jsonElement.getAsJsonObject();
+
+				String credorNome = jsonObject.get("credor_nome").isJsonNull() ? null
+						: jsonObject.get("credor_nome").getAsString();
+				String credorCpf = jsonObject.get("credor_cpf").isJsonNull() ? null
+						: jsonObject.get("credor_cpf").getAsString();
+				String credorEndereco = jsonObject.get("credor_endereco")
+						.isJsonNull() ? null : jsonObject
+						.get("credor_endereco").getAsString();
+				String credorCep = jsonObject.get("credor_endereco_cep")
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_cep").getAsString();
+				String credorBairro = jsonObject.get("credor_endereco_bairro")
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_bairro").getAsString();
+				String credorCidade = jsonObject.get("credor_endereco_cidade")
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_cidade").getAsString();
+				String credorUf = jsonObject.get("credor_endereco_uf")
+						.isJsonNull() ? null : jsonObject.get(
+						"credor_endereco_uf").getAsString();
+				String credorResidencial = jsonObject.get(
+						"credor_telefone_residencial").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_residencial")
+								.getAsString();
+				String credorCelular = jsonObject
+						.get("credor_telefone_celular").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_celular")
+								.getAsString();
+				String credorComercial = jsonObject.get(
+						"credor_telefone_comercial").isJsonNull() ? null
+						: jsonObject.get("credor_telefone_comercial")
+								.getAsString();
+
+				String alunoId = jsonObject.get("aluno_id").isJsonNull() ? null
+						: jsonObject.get("aluno_id").getAsString();
+				String alunoNome = jsonObject.get("aluno_nome").isJsonNull() ? null
+						: jsonObject.get("aluno_nome").getAsString();
+				String alunoNomeSocial = jsonObject.get("aluno_nome_social")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_nome_social").getAsString();
+				String alunoEndereco = jsonObject.get("aluno_endereco")
+						.isJsonNull() ? null : jsonObject.get("aluno_endereco")
+						.getAsString();
+				String alunoCep = jsonObject.get("aluno_endereco_cep")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_cep").getAsString();
+				String alunoBairro = jsonObject.get("aluno_endereco_bairro")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_bairro").getAsString();
+				String alunoCidade = jsonObject.get("aluno_endereco_cidade")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_cidade").getAsString();
+				String alunoUf = jsonObject.get("aluno_endereco_uf")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_endereco_uf").getAsString();
+				String alunoSexo = jsonObject.get("aluno_sexo").isJsonNull() ? null
+						: jsonObject.get("aluno_sexo").getAsString();
+				String alunoDataNascimento = jsonObject.get(
+						"aluno_data_nascimento").isJsonNull() ? null
+						: jsonObject.get("aluno_data_nascimento").getAsString();
+				String alunoRg = jsonObject.get("aluno_rg").isJsonNull() ? null
+						: jsonObject.get("aluno_rg").getAsString();
+				String alunoCpf = jsonObject.get("aluno_cpf").isJsonNull() ? null
+						: jsonObject.get("aluno_cpf").getAsString();
+				String alunoCelular = jsonObject.get("aluno_telefone_celular")
+						.isJsonNull() ? null : jsonObject.get(
+						"aluno_telefone_celular").getAsString();
+				String alunoResidencial = jsonObject.get(
+						"aluno_telefone_residencial").isJsonNull() ? null
+						: jsonObject.get("aluno_telefone_residencial")
+								.getAsString();
+				String alunoEmail = jsonObject.get("aluno_email").isJsonNull() ? null
+						: jsonObject.get("aluno_email").getAsString();
+
+				String cursoDescricao = jsonObject.getAsJsonArray("cursos")
+						.get(0).getAsJsonObject().get("curso_descricao")
+						.isJsonNull() ? null : jsonObject
+						.getAsJsonArray("cursos").get(0).getAsJsonObject()
+						.get("curso_descricao").getAsString();
+
+				String cursoId = jsonObject.getAsJsonArray("cursos").get(0)
+						.getAsJsonObject().get("curso_id").isJsonNull() ? null
+						: jsonObject.getAsJsonArray("cursos").get(0)
+								.getAsJsonObject().get("curso_id")
+								.getAsString();
+
+				String turmaId = jsonObject.getAsJsonArray("cursos").get(0)
+						.getAsJsonObject().get("turma_id").isJsonNull() ? null
+						: jsonObject.getAsJsonArray("cursos").get(0)
+								.getAsJsonObject().get("turma_id")
+								.getAsString();
+
+				String alunoSituacao = jsonObject.getAsJsonArray("cursos")
+						.get(0).getAsJsonObject().get("situacao_descricao")
+						.isJsonNull() ? null : jsonObject
+						.getAsJsonArray("cursos").get(0).getAsJsonObject()
+						.get("situacao_descricao").getAsString();
+				String alunoSituacaoId = jsonObject.getAsJsonArray("cursos")
+						.get(0).getAsJsonObject().get("situacao_id")
+						.isJsonNull() ? null : jsonObject
+						.getAsJsonArray("cursos").get(0).getAsJsonObject()
+						.get("situacao_id").getAsString();
+
+				boolean credor = getIfCredorExist(credorCpf);
+				boolean aluno = getIfAlunoExist(alunoId);
+
+				if (credorCpf != null && credorCidade != null) {
+					/*if ((alunoSituacaoId.equalsIgnoreCase("LFI"))
+							|| (alunoSituacaoId.equalsIgnoreCase("LFR"))
+							|| (alunoSituacaoId.equalsIgnoreCase("MT"))
+							|| (alunoSituacaoId.equalsIgnoreCase("TF"))
+							|| (alunoSituacaoId.equalsIgnoreCase("NC"))
+							|| (alunoSituacaoId.equalsIgnoreCase("NF"))
+							|| (alunoSituacaoId.equalsIgnoreCase("CAC"))
+							|| (alunoSituacaoId.equalsIgnoreCase("FO"))) {*/
+						System.out.println("entrou na validação de cadastro");
+						if (!credor) {
+							BigDecimal credotAtual = insertCredor(credorNome,
+									credorCpf, credorEndereco, credorCep,
+									credorBairro, credorCidade, credorUf,
+									credorResidencial, credorCelular,
+									credorComercial, alunoNome);
+							/*insertLogIntegracao("Credor Cadastrado: ",
+									"Sucesso", credorNome, "");
+
+							insertCursoTurma(cursoDescricao, cursoId, turmaId,
+									credorNome, alunoNome, codEmp);*/
+
+							System.out.println("ID EXTERNO: " + cursoId);
+							/*insertLogIntegracao("Curso e turma cadastrado",
+									"Sucesso", credorNome, alunoNome);*/
+							System.out.println("Teste validação aluno: "
+									+ aluno + ": alunoId");
+							if (!aluno) {
+								insertAluno(credotAtual, alunoId, alunoNome,
+										alunoNomeSocial, alunoEndereco,
+										alunoCep, alunoBairro, alunoCidade,
+										alunoUf, alunoSexo,
+										alunoDataNascimento, alunoRg, alunoCpf,
+										alunoCelular, alunoResidencial,
+										alunoEmail, alunoSituacao,
+										alunoSituacaoId, credorNome, codEmp,
+										cursoId);
+								System.out.println("Entrou no cad aluno");
+								/*insertLogIntegracao("Aluno Cadastro: ",
+										"Sucesso", "", alunoNome);*/
+							}
+							
+							/*insertLogIntegracao(
+									"Finalizando chamada do endpoint de Alunos",
+									"Sucesso", "", "");*/
+						} else {
+							/*insertLogIntegracao("Credor já cadastrado",
+									"Aviso", credorNome, "");*/
+
+							BigDecimal credorCadastrado = getCredorCadastrado(credorCpf);
+
+							insertCursoTurma(cursoDescricao, cursoId, turmaId,
+									credorNome, alunoNome, codEmp);
+							/*insertLogIntegracao("Curso e turma cadastrado",
+									"Sucesso", "", "");*/
+							System.out.println("Teste validação aluno: "
+									+ aluno + ": alunoId");
+							if (!aluno) {
+								System.out.println("Entrou no cad aluno");
+								insertAluno(credorCadastrado, alunoId,
+										alunoNome, alunoNomeSocial,
+										alunoEndereco, alunoCep, alunoBairro,
+										alunoCidade, alunoUf, alunoSexo,
+										alunoDataNascimento, alunoRg, alunoCpf,
+										alunoCelular, alunoResidencial,
+										alunoEmail, alunoSituacao,
+										alunoSituacaoId, credorNome, codEmp,
+										cursoId);
+								/*insertLogIntegracao("Aluno já Cadastro ",
+										"Aviso", "", alunoNome);*/
+							}else{
+								updateAluno(alunoSituacaoId, alunoSituacao, alunoId);
+							}
+							
+							/*insertLogIntegracao(
+									"Finalizando chamada do endpoint de Alunos",
+									"Sucesso", credorNome, alunoNome);*/
+						}
+					/*} else {
+						System.out
+								.println("Aluno com situação diferente do esperado");
+					}*/
+
+				}
+			}
+		}
     catch (Exception e)
     {
       e.printStackTrace();
@@ -361,7 +515,7 @@ public class JobGetCredorAlunoTurmaCurso
     int credor = 0;
     try
     {
-      updateTgfNumParc();
+      //updateTgfNumParc();
       
       jdbc.openSession();
       
@@ -405,11 +559,11 @@ public class JobGetCredorAlunoTurmaCurso
     int aluno = 0;
     try
     {
-      updateTgfNumParc();
+      //updateTgfNumParc();
       
       jdbc.openSession();
       
-      String sqlSlt = "SELECT COUNT(0) AS ALUNO FROM AD_ALUNOS WHERE CPF = ?";
+      String sqlSlt = "SELECT COUNT(0) AS ALUNO FROM AD_ALUNOS WHERE ID_EXTERNO = ?";
       
       pstmt = jdbc.getPreparedStatement(sqlSlt);
       pstmt.setString(1, alunoCpf);
@@ -449,7 +603,7 @@ public class JobGetCredorAlunoTurmaCurso
     BigDecimal credorCadastrado = BigDecimal.ZERO;
     try
     {
-      updateTgfNumParc();
+      //updateTgfNumParc();
       
       jdbc.openSession();
       
@@ -505,6 +659,33 @@ public class JobGetCredorAlunoTurmaCurso
       }
       jdbc.closeSession();
     }
+  }
+  public void updateAluno(String idSituacao, String situacao, String idAluno)
+		  throws Exception
+  {
+	  EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	  JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	  PreparedStatement pstmt = null;
+	  try
+	  {
+		  jdbc.openSession();
+		  
+		  String sqlUpd = "UPDATE AD_ALUNOS SET SITUACAO_ID = '"+idSituacao+"', SITUACAO = '"+situacao+"' WHERE ID_EXTERNO = '" +idAluno+"'";
+		  
+		  pstmt = jdbc.getPreparedStatement(sqlUpd);
+		  pstmt.executeUpdate();
+	  }
+	  catch (SQLException e)
+	  {
+		  e.printStackTrace();
+	  }
+	  finally
+	  {
+		  if (pstmt != null) {
+			  pstmt.close();
+		  }
+		  jdbc.closeSession();
+	  }
   }
   
   public BigDecimal getMaxNumParc()
@@ -579,28 +760,6 @@ public class JobGetCredorAlunoTurmaCurso
       
       String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL ,TIPPESSOA, AD_ENDCREDOR, CODBAI, CODCID, CEP,TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) \t\tVALUES(?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE( \t\t\t    upper(nomebai), \t\t\t    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  ) like TRANSLATE( \t\t\t    upper(?), \t\t\t    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  )), 0), (SELECT max(codcid) FROM tsicid WHERE TRANSLATE(              UPPER(descricaocorreio),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               LIKE TRANSLATE(UPPER(?),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               OR SUBSTR(UPPER(descricaocorreio),               1, INSTR(UPPER(descricaocorreio), ' ') - 1)               LIKE TRANSLATE(UPPER(?),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')),  ?, ?, ?, SYSDATE, SYSDATE, 'S')";
       
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
       pstmt = jdbc.getPreparedStatement(sqlP);
       pstmt.setBigDecimal(1, atualCodparc);
       pstmt.setString(2, credorNome.toUpperCase());
@@ -645,14 +804,16 @@ public class JobGetCredorAlunoTurmaCurso
     if ((cursoDescricao != null) && 
       (validarCadastroCurso(cursoDescricao, credorNome, alunoNome))) {
       insertCurso(cursoDescricao, cursoId, credorNome, alunoNome);
+    }else{
+    	updateCurso(cursoDescricao, cursoId, credorNome, alunoNome);
     }
     if ((cursoDescricao != null) && 
-      (validarCadastroCursoProj(cursoDescricao, credorNome, alunoNome))) {
+      (validarCadastroCursoProj(cursoDescricao, credorNome, alunoNome, codEmp))) {
       insertCursoProj(cursoDescricao, credorNome, alunoNome, codEmp, 
         cursoId);
     }
     if ((turmaId != null) && 
-      (validarCadastroTurma(turmaId, credorNome, alunoNome))) {
+      (validarCadastroTurma(turmaId, credorNome, alunoNome, cursoId, codEmp))) {
       insertCadastroTurma(turmaId, codEmp, cursoId);
     }
   }
@@ -708,7 +869,7 @@ public class JobGetCredorAlunoTurmaCurso
     return false;
   }
   
-  public boolean validarCadastroCursoProj(String curso, String credorNome, String alunoNome)
+  public boolean validarCadastroCursoProj(String curso, String credorNome, String alunoNome, BigDecimal codEmp)
     throws Exception
   {
     EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -727,7 +888,7 @@ public class JobGetCredorAlunoTurmaCurso
 
         curso.trim() + 
         "%'), " + 
-        "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')";
+        "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') AND CODPROJPAI = (SELECT MAX(CODPROJ) FROM TCSPRJ WHERE CODEMP = "+codEmp+")";
       
       pstmt = jdbc.getPreparedStatement(sqlNota);
       rs = pstmt.executeQuery();
@@ -759,7 +920,7 @@ public class JobGetCredorAlunoTurmaCurso
     return false;
   }
   
-  public boolean validarCadastroTurma(String turma, String credorNome, String alunoNome)
+  public boolean validarCadastroTurma(String turma, String credorNome, String alunoNome, String cursoId, BigDecimal codEmp)
     throws Exception
   {
     EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -778,7 +939,7 @@ public class JobGetCredorAlunoTurmaCurso
 
         turma + 
         "%'), " + 
-        "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')";
+        "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODPROJPAI = (SELECT MAX(CODPROJ) FROM TCSPRJ WHERE CODEMP = "+codEmp+") AND AD_CURSOID = '"+cursoId+"')";
       
       pstmt = jdbc.getPreparedStatement(sqlNota);
       rs = pstmt.executeQuery();
@@ -826,29 +987,14 @@ public class JobGetCredorAlunoTurmaCurso
     {
       jdbc.openSession();
       
-      String sqlUpdate = "INSERT INTO TCSPRJ(CODPROJ, CODPROJPAI ,IDENTIFICACAO, ABREVIATURA, ATIVO, ANALITICO, GRAU)VALUES ((SELECT MAX(CODPROJ) + 1 FROM TCSPRJ WHERE CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE AD_CURSOID = '" + 
-      
-
-
-        cursoId + "'))," + 
+      String sqlUpdate = "INSERT INTO TCSPRJ(CODPROJ, CODPROJPAI ,IDENTIFICACAO, ABREVIATURA, ATIVO, ANALITICO, GRAU)VALUES ((SELECT NVL((SELECT MAX(CODPROJ) + 1 FROM TCSPRJ WHERE CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE AD_CURSOID = '"+cursoId+"' AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "+codEmp+"))), (SELECT CODPROJ FROM TCSPRJ WHERE AD_CURSOID = '"+cursoId+"' AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "+codEmp+"))) + 1 FROM DUAL)," + 
         " (SELECT CODPROJ FROM TCSPRJ WHERE AD_CURSOID = '" + 
-        cursoId + "'), " + "'" + turmaId.toUpperCase() + "' , " + 
+        cursoId + "'AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "+codEmp+")), " + "'" + turmaId.toUpperCase() + "' , " + 
         "'" + turmaId.toUpperCase() + "', '" + ativo + 
         "', '" + analitico + "', '" + grau + "')";
       
       pstmt = jdbc.getPreparedStatement(sqlUpdate);
       
-
-
-
-
-
-
-
-
-
-
-
 
       pstmt.executeUpdate();
     }
@@ -915,6 +1061,41 @@ public class JobGetCredorAlunoTurmaCurso
     }
   }
   
+  public void updateCurso(String cursoDescricao, String cursoId, String credorNome, String alunoNome)
+		  throws Exception
+  {
+	  EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	  JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	  PreparedStatement pstmt = null;
+	  
+	  
+	  System.out.println("ID_EXTERNO: " + cursoId);
+	  try
+	  {
+		  jdbc.openSession();
+		  
+		  String sqlUpdate = "UPDATE TSICUS SET AD_IDEXTERNO = '"+cursoId+"' WHERE CODCENCUS = (SELECT CODCENCUS FROM TSICUS  WHERE TRANSLATE(UPPER (DESCRCENCUS), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE (UPPER ('%"+cursoDescricao.trim()+"'),  'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC'))";
+		  
+		  
+		  pstmt = jdbc.getPreparedStatement(sqlUpdate);
+		  
+		  pstmt.executeUpdate();
+	  }
+	  catch (Exception se)
+	  {
+		  insertLogIntegracao("Erro cadastrando curso: " + se.getMessage(), 
+				  "Erro", credorNome, alunoNome);
+		  se.printStackTrace();
+	  }
+	  finally
+	  {
+		  if (pstmt != null) {
+			  pstmt.close();
+		  }
+		  jdbc.closeSession();
+	  }
+  }
+  
   public BigDecimal getMaxCodProjPaiProj(BigDecimal codEmp)
     throws Exception
   {
@@ -928,7 +1109,7 @@ public class JobGetCredorAlunoTurmaCurso
     {
       jdbc.openSession();
       
-      String sqlSelect = "select codproj from TCSPRJ where codemp = 3";
+      String sqlSelect = "select codproj from TCSPRJ where codemp = " + codEmp;
       
       pstmt = jdbc.getPreparedStatement(sqlSelect);
       
@@ -990,18 +1171,6 @@ public class JobGetCredorAlunoTurmaCurso
       
       pstmt = jdbc.getPreparedStatement(sqlUpdate);
       
-
-
-
-
-
-
-
-
-
-
-
-
 
       pstmt.executeUpdate();
     }
@@ -1329,8 +1498,6 @@ public class JobGetCredorAlunoTurmaCurso
   {
     StringBuilder responseContent = new StringBuilder();
     
-
-
     URL obj = new URL(ur);
     HttpURLConnection https = (HttpURLConnection)obj.openConnection();
     

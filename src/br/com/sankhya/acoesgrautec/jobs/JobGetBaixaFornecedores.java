@@ -1,29 +1,10 @@
 package br.com.sankhya.acoesgrautec.jobs;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.math.BigDecimal;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-
-import org.cuckoo.core.ScheduledAction;
-import org.cuckoo.core.ScheduledActionContext;
-
 import br.com.sankhya.acoesgrautec.services.SkwServicoCompras;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.core.JapeSession;
 import br.com.sankhya.jape.core.JapeSession.SessionHandle;
 import br.com.sankhya.jape.dao.JdbcWrapper;
-import br.com.sankhya.jape.vo.DynamicVO;
-import br.com.sankhya.jape.wrapper.JapeFactory;
-import br.com.sankhya.jape.wrapper.JapeWrapper;
-import br.com.sankhya.modelcore.util.DynamicEntityNames;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
 
 import com.google.gson.JsonArray;
@@ -31,56 +12,50 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-public class JobGetBaixa implements ScheduledAction {
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Iterator;
 
-	@Override
+import org.cuckoo.core.ScheduledAction;
+import org.cuckoo.core.ScheduledActionContext;
+
+public class JobGetBaixaFornecedores implements ScheduledAction {
 	public void onTime(ScheduledActionContext arg0) {
-
-		
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 
-		 BigDecimal codEmp = BigDecimal.ZERO;
-		 BigDecimal idCarga = BigDecimal.ZERO;
-		 
-		 String url = "";
-		 String token = "";
-		 String matricula = "";
-		 
-		 int count = 0;
+		BigDecimal codEmp = BigDecimal.ZERO;
 
+		String url = "";
+		String token = "";
 		try {
-
 			jdbc.openSession();
 
-//			String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
-			String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
+			String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+			String query4 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 4";
 
-			pstmt = jdbc.getPreparedStatement(query3);
+			pstmt = jdbc.getPreparedStatement(query4);
 
 			rs = pstmt.executeQuery();
-
 			while (rs.next()) {
-				count++;
-				
 				codEmp = rs.getBigDecimal("CODEMP");
-			    idCarga = rs.getBigDecimal("IDCARGA");
-			        
-			    url = rs.getString("URL");
-			    token = rs.getString("TOKEN");
-			    matricula = rs.getString("MATRICULA");
 
-				efetuarBaixa(url, token, codEmp, matricula);
-				updateCarga(idCarga);
-			}
-			System.out.println("Chegou ao final da baixa");
-			if(count == 0){
-				resetCarga(codEmp);
-			}
+				url = rs.getString("URL");
+				token = rs.getString("TOKEN");
 
+				efetuarBaixa(url, token, codEmp);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			try {
@@ -109,282 +84,239 @@ public class JobGetBaixa implements ScheduledAction {
 		}
 	}
 
-	public void efetuarBaixa(String url, String token, BigDecimal codemp, String matricula) throws Exception {
-
+	public void efetuarBaixa(String url, String token, BigDecimal codemp)
+			throws Exception {
 		System.out.println("Entrou no job baixa");
-		
+
 		boolean movBanc = false;
 
 		SimpleDateFormat formatoOriginal = new SimpleDateFormat("yyyy-MM-dd");
 		SimpleDateFormat formatoDesejado = new SimpleDateFormat("dd/MM/yyyy");
 
 		Date dataAtual = new Date();
-	    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
 
-	    Calendar calendar = Calendar.getInstance();
-	    calendar.setTime(dataAtual);
-	    calendar.add(Calendar.DAY_OF_MONTH, -1); 
-
-	    Date dataUmDiaAtras = calendar.getTime();
-	    
-	    String dataUmDiaFormatada = formato.format(dataUmDiaAtras);
-	    String dataAtualFormatada = formato.format(dataAtual);
-	    
-	    System.out.println("data um dia atras: " + dataUmDiaFormatada);
-	    System.out.println("data normal: " + dataAtualFormatada);
+		String dataAtualFormatada = formatoOriginal.format(dataAtual);
 
 		BigDecimal codTipTit = BigDecimal.ZERO;
 		BigDecimal codBanco = BigDecimal.ZERO;
 		BigDecimal codConta = BigDecimal.ZERO;
 		BigDecimal nubco = BigDecimal.ZERO;
-
+		
+		BigDecimal nufin = BigDecimal.ZERO;
+		
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 
 		String dataEstorno = "";
-		
-
-		// String codUsu,"123",
-		// String nuFin,
-		// String codEmp,
-		// String vlrDesdob,
-		// String codContaBaixa,
-		// int codLancamento 2
-		// String codTopBaixa "1000"
 
 		SkwServicoCompras sc = null;
 
-		SessionHandle hnd = null;
+		JapeSession.SessionHandle hnd = null;
 
 		hnd = JapeSession.open();
 
 		System.out.println("Entrou aqui JOBBaixas");
 
-		// parametroVO.asString("VALOR");
 		String domain = "http://127.0.0.1:8501";
-		/*
-		 * try { JapeWrapper usuarioDAO = JapeFactory
-		 * .dao(DynamicEntityNames.USUARIO); DynamicVO usuarioVO;
-		 * 
-		 * usuarioVO = usuarioDAO.findByPK(new BigDecimal(0));
-		 * 
-		 * String md5 = usuarioVO.getProperty("INTERNO").toString(); String
-		 * nomeUsu = usuarioVO.getProperty("NOMEUSU").toString();
-		 * 
-		 * sc = new SkwServicoCompras(domain, nomeUsu, md5);
-		 * 
-		 * System.out.println("Passou da instancia da api");
-		 * 
-		 * } catch (Exception e1) { e1.printStackTrace(); }
-		 */
 		
 		int count = 0;
 		
-		BigDecimal nufin = BigDecimal.ZERO;
-		
 		try {
-
 			jdbc.openSession();
 
-			//String sqlP = "SELECT ID_EXTERNO, CODPARC, CODCENCUS FROM AD_ALUNOS WHERE CODEMP = 3 AND NVL(INTEGRADO_BAIXA, 'N') = 'N' AND ROWNUM <= 200";
-			// + "WHERE ID_EXTERNO = '"+"STB210040"+"'";
-			
-			String sqlP = "SELECT ID_EXTERNO, CODPARC FROM AD_ALUNOS WHERE ID_EXTERNO = '" + matricula + "'";//NVL(INTEGRADO_BAIXA, 'N') = 'N' AND CODEMP = "+codemp+" AND ROWNUM <= 300";
-			
+			//String sqlP = "SELECT AD_ID_EXTERNO_FORN, CODPARC FROM TGFPAR WHERE AD_ID_EXTERNO_FORN IS NOT NULL AND CODEMP = 3 and rownum < 4";
+			String sqlP = "SELECT NUFIN, AD_IDEXTERNO, AD_PROCESSADO FROM TGFFIN WHERE CODPARC IN (SELECT CODPARC FROM AD_IDFORNACAD WHERE CODEMP = "+codemp+") AND AD_IDEXTERNO IS NOT NULL AND DHBAIXA IS NULL AND NVL(AD_PROCESSADO, 'N') = 'N' AND CODEMP = "+codemp+" AND ROWNUM <= 400";
+
 			pstmt = jdbc.getPreparedStatement(sqlP);
 
 			rs = pstmt.executeQuery();
-
+			
 			while (rs.next()) {
 				count++;
-				//String aluno = rs.getString("ID_EXTERNO");
-				String aluno = rs.getString("ID_EXTERNO");
+				//String fornecedor = rs.getString("AD_ID_EXTERNO_FORN");
+				String idExternoTitulo = rs.getString("AD_IDEXTERNO");
 
-				String[] response = apiGet(url + "/financeiro" + "/baixas"
-				// + "?quantidade=1"
-				// + "?dataInicial="+dataAtualFormatada+" 00:00:00"
-						+ "?matricula=" + aluno
-						//+ "&vencimentoInicial=2024-08-04 00:00:00&vencimentoFinal=2024-08-05 23:59:59"
-						+ "&dataInicial="+dataUmDiaFormatada+" 00:00:00&dataFinal="+dataAtualFormatada+" 23:59:59"
-						, token);
+				String[] response = apiGet(url + "/financeiro" + "/clientes"
+						+ "/titulos-pagar-baixa" + "?titulo=" + idExternoTitulo/*+"&vencimentoInicial=2024-01-01&vencimentoFinal=2024-03-31"*/,
+
+				token);
 
 				System.out.println("Teste: " + response[1]);
+				
+				String response2 = response[1];
+				
+				if(!response2.equals("[]")){
+					JsonParser parser = new JsonParser();
+					JsonArray jsonArray = parser.parse(response[1])
+							.getAsJsonArray();
 
-				JsonParser parser = new JsonParser();
-				JsonArray jsonArray = parser.parse(response[1])
-						.getAsJsonArray();
+					for (JsonElement jsonElement : jsonArray) {
 
-				for (JsonElement jsonElement : jsonArray) {
-					JsonObject jsonObject = jsonElement.getAsJsonObject();
+						JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-					System.out.println("Titulo ID: "
-							+ jsonObject.get("titulo_id").getAsInt());
-					System.out.println("Valor da Baixa: "
-							+ jsonObject.get("baixa_valor").getAsString());
+						String tituloId = jsonObject.get("titulo_id").getAsString();
 
-					String tituloId = jsonObject.get("titulo_id").getAsString();
-					BigDecimal vlrBaixa = new BigDecimal(jsonObject.get(
-							"baixa_valor").getAsString());
-					
-					BigDecimal vlrJuros = new BigDecimal(jsonObject.get(
-							"baixa_juros").getAsString());
-					
-					BigDecimal vlrMulta = new BigDecimal(jsonObject.get(
-							"baixa_multa").getAsString());
-					
-					BigDecimal vlrDesconto = new BigDecimal(jsonObject.get(
-							"baixa_desconto").getAsString());
-					
-					BigDecimal vlrOutrosAcrescimos = new BigDecimal(jsonObject.get(
-							"baixa_outros_acrescimos").getAsString());
+						BigDecimal vlrBaixa = new BigDecimal(jsonObject.get(
+								"baixa_valor").getAsString());
 
-					String dataBaixa = jsonObject.get("baixa_data")
-							.getAsString();
+						BigDecimal vlrJuros = new BigDecimal(jsonObject.get(
+								"baixa_juros").getAsString());
 
-					Date data = formatoOriginal.parse(dataBaixa);
+						BigDecimal vlrMulta = new BigDecimal(jsonObject.get(
+								"baixa_multa").getAsString());
 
-					String dataBaixaFormatada = formatoDesejado.format(data);
+						BigDecimal vlrDesconto = new BigDecimal(jsonObject.get(
+								"baixa_desconto").getAsString());
+						
+						BigDecimal vlrOutrosAcrescimos = new BigDecimal(jsonObject.get(
+								"baixa_outros_acrescimos").getAsString());
 
-					nufin = getNufin(tituloId);
-
-					if (jsonObject.has("baixa_estorno_data")
-							&& !jsonObject.get("baixa_estorno_data")
-									.isJsonNull()) {
-
-						System.out.println("Entrou no if de estorno");
-
-						dataEstorno = jsonObject.get("baixa_estorno_data")
+						String dataBaixa = jsonObject.get("baixa_data")
 								.getAsString();
-					} else {
-						System.out.println("Entrou no else de estorno");
-						dataEstorno = null;
-					}
 
-					String idExterno = jsonObject.get("local_pagamento_id")
-							.getAsString();
+						String baixaId = jsonObject.get("baixa_id").getAsString();
 
-					codBanco = getCodBanco(idExterno, codemp);
-					codConta = getCodConta(idExterno, codemp);
+						Date data = formatoOriginal.parse(dataBaixa);
 
-					JsonArray formas_de_pagamento = jsonObject
-							.getAsJsonArray("formas_de_pagamento");
+						String dataBaixaFormatada = formatoDesejado.format(data);
 
-					for (JsonElement formas_de_pagamentoElement : formas_de_pagamento) {
+						nufin = getNufin(tituloId);
+						if (jsonObject.has("baixa_estorno_data")) {
+							if (!jsonObject.get("baixa_estorno_data").isJsonNull()) {
+								System.out.println("Entrou no if de estorno");
 
-						JsonObject formas_de_pagamentoObject = formas_de_pagamentoElement
+								dataEstorno = jsonObject.get("baixa_estorno_data")
+										.getAsString();
+							}else{
+								dataEstorno = null;
+							}
+						}
+						
+						String idExterno = jsonObject.get("local_pagamento_id")
+								.getAsString();
+						codBanco = /*new BigDecimal("999");*/getCodBanco(idExterno, codemp);
+						codConta = /*new BigDecimal("44");*/getCodConta(idExterno, codemp);
+
+						String[] response1 = apiGet(url + "/financeiro"
+								+ "/clientes"
+								+ "/titulos-pagar-baixa-forma-pagamento"
+								+ "?baixa=" + baixaId, token);
+
+						JsonParser parser2 = new JsonParser();
+						JsonArray jsonArray2 = parser2.parse(response1[1])
+								.getAsJsonArray();
+
+						JsonObject jsonObject2 = jsonArray2.get(0)
 								.getAsJsonObject();
 
-						System.out.println("Forma de pagamento: "
-								+ formas_de_pagamentoObject.get(
-										"forma_pagamento_id").getAsString());
+						String baixaPagamentoVlr = jsonObject2.get(
+								"forma_pagamento_valor").getAsString();
 
-						// codTipTit = getTipTit("Dinheiro");
-						codTipTit = getTipTit(
-								formas_de_pagamentoObject.get(
-										"forma_pagamento_id").getAsString(),
-								codemp);
+						String baixaFormaPagamentoId = jsonObject2.get(
+								"forma_pagamento_id").getAsString();
 
-					}
+						codTipTit = getTipTit(baixaFormaPagamentoId, codemp);
 
-					System.out.println("estorno: " + dataEstorno);
-					System.out.println("Data estorno: "
-							+ jsonObject.get("baixa_estorno_data"));
+						System.out.println("estorno: " + dataEstorno);
+						System.out.println("Data estorno: "
+								+ jsonObject.get("baixa_estorno_data"));
+						if (nufin.compareTo(BigDecimal.ZERO) != 0) {
+							
+							System.out.println("Achou nufin pra baixar: " + nufin);
+							
+							if (validarDataMinMovBancaria(codConta,
+									dataBaixaFormatada)) {
+								
+								if (dataEstorno == null) {
+									if ((validarBaixa(nufin))
+											&& (nufin.compareTo(BigDecimal
+													.valueOf(113328L)) != 0)) {
+										
+										System.out.println("Chegou no update");
+										
+										if (vlrBaixa.compareTo(getVlrDesdob(nufin)) == 0) {
+											System.out
+													.println("Entrou no if do valor");
+											updateFin(codTipTit, nufin, codBanco,
+													codConta, vlrDesconto,
+													vlrJuros, vlrMulta, vlrOutrosAcrescimos);
+										} else {
+											System.out
+													.println("Entrou no else do valor");
+											updateFinComVlrBaixa(codTipTit, nufin,
+													codBanco, codConta, vlrBaixa,vlrDesconto,
+													vlrJuros, vlrMulta, vlrOutrosAcrescimos);
+										}
+										System.out.println("vlrDesconto: "
+												+ vlrDesconto);
+										System.out.println("vlrJuros: " + vlrJuros);
+										System.out.println("vlrMulta: " + vlrMulta);
 
-					if (nufin.compareTo(BigDecimal.ZERO) != 0) {
-						if (validarDataMinMovBancaria(codConta,
-								dataBaixaFormatada)) {
-							if (dataEstorno == null) {
-								if (validarBaixa(nufin) && nufin.compareTo(BigDecimal.valueOf(113328)) != 0) {
+										nubco = insertMovBancaria(codConta,
+												vlrBaixa, nufin, dataBaixaFormatada);
 
-									System.out.println("Chegou no update");
-									if (vlrBaixa.compareTo(getVlrDesdob(nufin)) == 0) {
+										movBanc = true;
+
 										System.out
-												.println("Entrou no if do valor");
-										updateFin(codTipTit, nufin, codBanco,
-												codConta, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos);
+												.println("Passou da mov bancaria: "
+														+ nubco);
+
+										System.out.println("vlrBaixa: " + vlrBaixa);
+
+										updateBaixa(nufin, nubco, vlrBaixa,
+												dataBaixaFormatada);
+
+										/*insertLogIntegracao(
+												"Baixa Efetuada Com Sucesso Para o Financeiro: "
+														+ nufin, "Sucesso");*/
 									} else {
-										System.out
-												.println("Entrou no else do valor");
-										updateFinComVlrBaixa(codTipTit, nufin,
-												codBanco, codConta, vlrBaixa,
-												vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos);
+										System.out.println("Financeiro " + nufin
+												+ " já baixado");
 									}
-									
-									System.out.println("vlrDesconto: " + vlrDesconto);
-									System.out.println("vlrJuros: " + vlrJuros);
-									System.out.println("vlrMulta: " + vlrMulta);
-									
-									/*updateFin(codTipTit, nufin, codBanco,
-											codConta, vlrDesconto, vlrJuros, vlrMulta);*/
-									
-									nubco = insertMovBancaria(
-											codConta, vlrBaixa, nufin,
-											dataBaixaFormatada);
-									
-
-									System.out
-											.println("Passou da mov bancaria: "
-													+ nubco);
-									
-									System.out.println("vlrBaixa: " + vlrBaixa);
-									
-									updateBaixa(nufin, nubco, vlrBaixa,
-											dataBaixaFormatada);
-									
-									movBanc = true;
-
-									/*insertLogIntegracao(
-											"Baixa Efetuada Com Sucesso Para o Financeiro: "
-													+ nufin, "Sucesso");*/
-								} else {
-									System.out.println("Financeiro " + nufin
-											+ " já baixado");
-								}
-							} else {
-								if (!validarBaixa(nufin)) {
-									
+								} else if (!validarBaixa(nufin)) {
 									nubco = getNubco(nufin);
 									updateFinExtorno(nufin);
 									deleteTgfMbc(nubco);
+									deleteTgfFin(nufin);
 									/*insertLogIntegracao(
 											"Estorno Efetuado com sucesso",
 											"Sucesso");*/
-
-								} 
+								}
+							} else {
+								/*insertLogIntegracao(
+										"Baixa Para o Titulo "
+												+ nufin
+												+ " Não Efetuada Pois a Data Minima de Movimentação Bancaria "
+												+ "Para a Conta " + codConta
+												+ " é Superior a Data de Baixa: "
+												+ dataBaixaFormatada, "Aviso");*/
 							}
 						} else {
-							/*insertLogIntegracao("Baixa Para o Titulo " + nufin
-									+ " Não Efetuada Pois a Data Minima de Movimentação Bancaria "
-									+ "Para a Conta " +codConta+ " é Superior a Data de Baixa: " + dataBaixaFormatada, "Aviso");*/
+							System.out
+									.println("Não foi possivel encontrar financeiro com id externo "
+											+ tituloId);
 						}
-					} else {
-						System.out
-								.println("Não foi possivel encontrar financeiro com id externo "
-										+ tituloId);
 					}
-
 				}
 				
-				//updateFlagAlunoIntegrado(aluno);
+				updateFlagTituloProcessado(idExternoTitulo);
 				
 			}
+			System.out.println("Chegou ao final da baixa");
 			
-			
-			/*if(count == 0){
-				updateResetarAlunos();
-			}*/
+			if(count == 0){
+				updateResetarTitulo(codemp);
+			}
 			
 		} catch (Exception e) {
 			e.printStackTrace();
-			
-			if(movBanc){
+			if (movBanc) {
 				updateFinExtorno(nufin);
 				deleteTgfMbc(nubco);
 				System.out.println("Apagou mov bank");
 			}
-			
 			try {
 				insertLogIntegracao(
 						"Mensagem de erro nas Baixas: " + e.getMessage(),
@@ -393,7 +325,6 @@ public class JobGetBaixa implements ScheduledAction {
 				e1.printStackTrace();
 			}
 		} finally {
-
 			if (pstmt != null) {
 				try {
 					pstmt.close();
@@ -409,9 +340,7 @@ public class JobGetBaixa implements ScheduledAction {
 				}
 			}
 			jdbc.closeSession();
-
 		}
-
 	}
 
 	public String[] apiGet(String ur, String token) throws Exception {
@@ -459,7 +388,9 @@ public class JobGetBaixa implements ScheduledAction {
 		}
 		System.out.println("Output from Server .... \n" + status);
 		String response = responseContent.toString();
-
+		
+		System.out.println("response teste: " + response);
+		
 		https.disconnect();
 
 		return new String[] { Integer.toString(status), response };
@@ -473,9 +404,7 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
 			String sqlNota = "SELECT NUFIN FROM TGFFIN WHERE AD_IDEXTERNO = ?";
@@ -484,17 +413,12 @@ public class JobGetBaixa implements ScheduledAction {
 			pstmt.setString(1, idTitulo.trim());
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("NUFIN");
-
 				if (id == null) {
 					id = BigDecimal.ZERO;
 				}
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -506,7 +430,6 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
@@ -517,9 +440,7 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
 			String sqlNota = "SELECT NUBCO FROM TGFFIN WHERE NUFIN = " + nufin;
@@ -527,13 +448,9 @@ public class JobGetBaixa implements ScheduledAction {
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("NUBCO");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -545,7 +462,6 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
@@ -556,27 +472,18 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		int count = 0;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "SELECT COUNT(0) AS COUNT " + "FROM TGFFIN "
-					+ "WHERE NUFIN = ? " + "AND DHBAIXA IS NOT NULL "
-					+ "AND VLRBAIXA IS NOT NULL "
-					+ "AND CODUSUBAIXA IS NOT NULL";
+			String sqlNota = "SELECT COUNT(0) AS COUNT FROM TGFFIN WHERE NUFIN = ? AND DHBAIXA IS NOT NULL AND VLRBAIXA IS NOT NULL AND CODUSUBAIXA IS NOT NULL";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setBigDecimal(1, nufin);
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				count = rs.getInt("COUNT");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -588,13 +495,10 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		if (count > 0) {
 			return false;
-		} else {
-			return true;
 		}
-
+		return true;
 	}
 
 	public boolean validarDataMinMovBancaria(BigDecimal codConta,
@@ -605,30 +509,24 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		int count = 0;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "SELECT COUNT(0) AS COUNT FROM (SELECT MIN(REFERENCIA) DTREF "
-					+ "	    FROM TGFSBC "
-					+ "	   WHERE CODCTABCOINT = "
-					+ codConta
+			String sqlNota = "SELECT COUNT(0) AS COUNT FROM (SELECT MIN(REFERENCIA) DTREF \t    FROM TGFSBC \t   WHERE CODCTABCOINT = "
+					+
+
+					codConta
 					+ ") "
-					+ "	WHERE DTREF > TO_DATE('"
+					+ "\tWHERE DTREF > TO_DATE('"
 					+ dataBaixa
 					+ "', 'DD/MM/YYYY')";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				count = rs.getInt("COUNT");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -640,13 +538,10 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		if (count > 0) {
 			return false;
-		} else {
-			return true;
 		}
-
+		return true;
 	}
 
 	public BigDecimal getTipTit(String idExterno, BigDecimal codEmp)
@@ -657,26 +552,19 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "SELECT CODTIPTIT " + "FROM AD_TIPTITINTEGRACAO "
-					+ "WHERE CODEMP = ? " + "AND IDEXTERNO = ?";
+			String sqlNota = "SELECT CODTIPTIT FROM AD_TIPTITINTEGRACAO WHERE CODEMP = ? AND IDEXTERNO = ?";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setBigDecimal(1, codEmp);
 			pstmt.setString(2, idExterno.trim());
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("CODTIPTIT");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -688,7 +576,6 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
@@ -700,26 +587,19 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "select CODBCO " + "from ad_infobankbaixa "
-					+ "WHERE CODEMP = ? " + "AND IDEXTERNO = ?";
+			String sqlNota = "select CODBCO from ad_infobankbaixa WHERE CODEMP = ? AND IDEXTERNO = ?";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setBigDecimal(1, codEmp);
 			pstmt.setString(2, idExterno.trim());
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("CODBCO");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -731,7 +611,6 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
@@ -743,26 +622,19 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "select CODCTABCOINT " + "from ad_infobankbaixa "
-					+ "WHERE CODEMP = ? " + "AND IDEXTERNO = ?";
+			String sqlNota = "select CODCTABCOINT from ad_infobankbaixa WHERE CODEMP = ? AND IDEXTERNO = ?";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setBigDecimal(1, codEmp);
 			pstmt.setString(2, idExterno.trim());
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("CODCTABCOINT");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -774,7 +646,6 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
@@ -785,9 +656,7 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal vlrDesdob = BigDecimal.ZERO;
-
 		try {
-
 			jdbc.openSession();
 
 			String sqlNota = "select VLRDESDOB FROM TGFFIN WHERE NUFIN = "
@@ -796,13 +665,9 @@ public class JobGetBaixa implements ScheduledAction {
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				vlrDesdob = rs.getBigDecimal("VLRDESDOB");
-
 			}
-
 		} catch (SQLException e) {
 			e.printStackTrace();
 		} finally {
@@ -814,18 +679,16 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return vlrDesdob;
 	}
 
 	public void updateFin(BigDecimal codtiptit, BigDecimal nufin,
-			BigDecimal codBanco, BigDecimal codConta, 
-			BigDecimal vlrDesconto, BigDecimal vlrJuros, BigDecimal vlrMulta,
+			BigDecimal codBanco, BigDecimal codConta, BigDecimal vlrDesconto,
+			BigDecimal vlrJuros, BigDecimal vlrMulta,
 			BigDecimal vlrOutrosAcrescimos) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-		
 		try {
 
 			jdbc.openSession();
@@ -866,9 +729,7 @@ public class JobGetBaixa implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
 		try {
-
 			jdbc.openSession();
 
 			String sqlNota = "DELETE FROM TGFMBC WHERE NUBCO = " + nubco;
@@ -888,23 +749,43 @@ public class JobGetBaixa implements ScheduledAction {
 			jdbc.closeSession();
 		}
 	}
+	
+	public void deleteTgfFin(BigDecimal nufin) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try {
+			jdbc.openSession();
+			
+			String sqlNota = "DELETE FROM TGFFIN WHERE NUFIN = " + nufin;
+			
+			pstmt = jdbc.getPreparedStatement(sqlNota);
+			
+			pstmt.executeUpdate();
+			
+			System.out.println("Passou do update");
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+	}
 
 	public void updateFinExtorno(BigDecimal nufin) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "UPDATE TGFFIN SET "
-					+ "VLRBAIXA = 0, "
-					+ "DHBAIXA = NULL, "
-					+ "NUBCO = NULL, "
-					+ "CODTIPOPERBAIXA = 0, "
-					+ "DHTIPOPERBAIXA = (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), "
-					+ "CODUSUBAIXA = NULL  " + "WHERE NUFIN = " + nufin;
+			String sqlNota = "UPDATE TGFFIN SET VLRBAIXA = 0, DHBAIXA = NULL, NUBCO = NULL, CODTIPOPERBAIXA = 0, DHTIPOPERBAIXA = (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), CODUSUBAIXA = NULL  WHERE NUFIN = "
+					+
+
+					nufin;
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 
@@ -925,23 +806,16 @@ public class JobGetBaixa implements ScheduledAction {
 	public void updateFinComVlrBaixa(BigDecimal codtiptit, BigDecimal nufin,
 			BigDecimal codBanco, BigDecimal codConta, BigDecimal vlrBaixa,
 			BigDecimal vlrDesconto, BigDecimal vlrJuros, BigDecimal vlrMulta,
-			BigDecimal vlrOutrosAcrescimos)
+			BigDecimal outrosAcrescimos)
 			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "UPDATE TGFFIN SET " + "CODTIPTIT = ?, "
-					+ "CODBCO = ?, " + "CODCTABCOINT = ?, " + "AD_VLRDESCINT = "+vlrDesconto+", "
-					+ "VLRINSS = 0, " + "VLRIRF = 0, " + "VLRISS = 0, "
-					+ "AD_VLRJUROSINT = "+vlrJuros+", " + "AD_VLRMULTAINT = "+vlrMulta+", "
-					+ "TIPJURO = null, AD_VLRORIG = VLRDESDOB, "
-					+ "VLRDESDOB = " + vlrBaixa + ", " + "TIPMULTA = null, AD_OUTACRESCIMOS = " + vlrOutrosAcrescimos
-					+ " WHERE nufin = ?";
+			String sqlNota = "UPDATE TGFFIN SET CODTIPTIT = ?, CODBCO = ?, CODCTABCOINT = ?, AD_VLRDESCINT = "+vlrDesconto+", VLRINSS = 0, VLRIRF = 0, VLRISS = 0, AD_VLRJUROSINT = "+vlrJuros+", AD_VLRMULTAINT = "+vlrMulta+", TIPJURO = null, AD_VLRORIG = VLRDESDOB, VLRDESDOB = "
+					+ vlrBaixa + "," + "TIPMULTA = null, AD_OUTACRESCIMOS = "+outrosAcrescimos+" WHERE nufin = ?";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setBigDecimal(1, codtiptit);
@@ -968,14 +842,13 @@ public class JobGetBaixa implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
 		try {
-
 			jdbc.openSession();
 
-			String sqlNota = "UPDATE TGFFIN SET "
-					+ "VLRBAIXA = "
-					+ vlrDesdob
+			String sqlNota = "UPDATE TGFFIN SET VLRBAIXA = "
+					+
+
+					vlrDesdob
 					+ ", "
 					+ "DHBAIXA = '"
 					+ dataBaixaFormatada
@@ -983,8 +856,8 @@ public class JobGetBaixa implements ScheduledAction {
 					+ "NUBCO = "
 					+ nubco
 					+ ", "
-					+ "CODTIPOPERBAIXA = 1400, "
-					+ "DHTIPOPERBAIXA = (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1400), "
+					+ "CODTIPOPERBAIXA = 1500, "
+					+ "DHTIPOPERBAIXA = (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1500), "
 					+ "CODUSUBAIXA = 0  " + "WHERE NUFIN = " + nufin;
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
@@ -1005,109 +878,97 @@ public class JobGetBaixa implements ScheduledAction {
 
 	public void insertLogIntegracao(String descricao, String status)
 			throws Exception {
-
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-		
-		try {
-		
+
 		jdbc.openSession();
 
-		String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, STATUS)"
-				+ "VALUES (((SELECT NVL(MAX(NUMUNICO), 0) + 1 FROM AD_LOGINTEGRACAO)), ?, SYSDATE, ?)";
+		String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, STATUS)VALUES (((SELECT NVL(MAX(NUMUNICO), 0) + 1 FROM AD_LOGINTEGRACAO)), ?, SYSDATE, ?)";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.setString(1, descricao);
 		pstmt.setString(2, status);
 		pstmt.executeUpdate();
-
-		
-			
-		} catch (Exception se) {
-			se.printStackTrace();
-		}finally{
+		try {
 			if (pstmt != null) {
 				pstmt.close();
 			}
 			if (jdbc != null) {
 				jdbc.closeSession();
 			}
+		} catch (Exception se) {
+			se.printStackTrace();
 		}
-
 	}
 
 	public BigDecimal insertMovBancaria(BigDecimal contaBancaria,
 			BigDecimal vlrDesdob, BigDecimal nufin, String dataBaixaFormatada)
 			throws Exception {
-
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 
 		BigDecimal nubco = getMaxNumMbc();
-		
-		try {
-		
+
 		jdbc.openSession();
 
-		String sqlUpdate = "INSERT INTO TGFMBC " + "(NUBCO, " + "CODLANC, "
-				+ "DTLANC, " + "CODTIPOPER, " + "DHTIPOPER, " + "DTCONTAB, "
-				+ "HISTORICO, " + "CODCTABCOINT, " + "NUMDOC, " + "VLRLANC, "
-				+ "TALAO, " + "PREDATA, " + "CONCILIADO, " + "DHCONCILIACAO, "
-				+ "ORIGMOV, " + "NUMTRANSF, " + "RECDESP, " + "DTALTER, "
-				+ "DTINCLUSAO, " + "CODUSU, " + "VLRMOEDA, " + "SALDO, "
-				+ "CODCTABCOCONTRA, " + "NUBCOCP, " + "CODPDV ) " + " VALUES ("
-				+ nubco
-				+ ", " // pk
+		String sqlUpdate = "INSERT INTO TGFMBC (NUBCO, CODLANC, DTLANC, CODTIPOPER, DHTIPOPER, DTCONTAB, HISTORICO, CODCTABCOINT, NUMDOC, VLRLANC, TALAO, PREDATA, CONCILIADO, DHCONCILIACAO, ORIGMOV, NUMTRANSF, RECDESP, DTALTER, DTINCLUSAO, CODUSU, VLRMOEDA, SALDO, CODCTABCOCONTRA, NUBCOCP, CODPDV )  VALUES ("
+				+
+
+				nubco
+				+ ", "
 				+ "1, "
 				+ "'"
 				+ dataBaixaFormatada
 				+ "'"
-				+ ", " // dtneg
-				+ "1400, " // top baixa
-				+ "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1400), " // dhtop
+				+ ", "
+				+ "1500, "
+				+ "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1500), "
 				+ "NULL, "
 				+ "(SELECT HISTORICO FROM TGFFIN WHERE NUFIN = "
 				+ nufin
-				+ "), " // historico
-				+ ""
-				+ contaBancaria
-				+ ", " // conta bancaria (CODCTABCOINT)
-				+ "0, " // NUMNOTA
-				+ ""
-				+ vlrDesdob
-				+ ", " // vlrdesdob
+				+ "), "
+				+
+
+				contaBancaria
+				+ ", "
+				+ "0, "
+				+
+
+				vlrDesdob
+				+ ", "
 				+ "NULL, "
-				+ "'"+dataBaixaFormatada+"', " // dtneg2
+				+ "'"
+				+ dataBaixaFormatada
+				+ "', "
 				+ "'N', "
 				+ "NULL, "
 				+ "'F', "
 				+ "NULL, "
 				+ "1, "
 				+ "SYSDATE, "
-				+ "SYSDATE, " + "0, " // Usuario
-				+ "0, " + "" + vlrDesdob + ", " // vlrDesdob
-				+ "NULL,  " + "NULL, " + "NULL) ";
+				+ "SYSDATE, "
+				+ "0, "
+				+ "0, "
+				+ vlrDesdob
+				+ ", "
+				+ "NULL,  "
+				+ "NULL, " + "NULL) ";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.executeUpdate();
-
-		
-			
-		} catch (Exception se) {
-			se.printStackTrace();
-		}finally{
+		try {
 			if (pstmt != null) {
 				pstmt.close();
 			}
 			if (jdbc != null) {
 				jdbc.closeSession();
 			}
+		} catch (Exception se) {
+			se.printStackTrace();
 		}
-
 		return nubco;
-
 	}
 
 	public BigDecimal getMaxNumMbc() throws Exception {
@@ -1117,22 +978,17 @@ public class JobGetBaixa implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal id = BigDecimal.ZERO;
-
 		try {
-
 			updateNumMbc();
 
 			jdbc.openSession();
 
-			// String sqlNota = "SELECT SEQ_TGFFIN_NUFIN.NEXTVAL FROM DUAL";
 			String sqlNota = "SELECT MAX(ULTCOD) AS ULTCOD FROM TGFNUM WHERE ARQUIVO = 'TGFMBC'";
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 
 			rs = pstmt.executeQuery();
-
 			if (rs.next()) {
-
 				id = rs.getBigDecimal("ULTCOD");
 			}
 		} catch (SQLException e) {
@@ -1147,41 +1003,34 @@ public class JobGetBaixa implements ScheduledAction {
 			}
 			jdbc.closeSession();
 		}
-
 		return id;
 	}
 
 	public void updateNumMbc() throws Exception {
-
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-		
-		try {
-		
+
 		jdbc.openSession();
 
 		String sqlUpdate = "UPDATE TGFNUM SET ULTCOD = NVL(ULTCOD, 0) + 1  WHERE ARQUIVO = 'TGFMBC'";
 
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.executeUpdate();
-
-		
-			
-		} catch (Exception se) {
-			se.printStackTrace();
-		}finally{
+		try {
 			if (pstmt != null) {
 				pstmt.close();
 			}
 			if (jdbc != null) {
 				jdbc.closeSession();
 			}
+		} catch (Exception se) {
+			se.printStackTrace();
 		}
-
 	}
 	
-	public void updateFlagAlunoIntegrado(String idAluno) throws Exception {
+
+	public void updateFlagTituloProcessado(String idTitulo) throws Exception {
 		
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1191,7 +1040,7 @@ public class JobGetBaixa implements ScheduledAction {
 			
 			jdbc.openSession();
 			
-			String sqlUpdate = "UPDATE AD_ALUNOS SET INTEGRADO_BAIXA = 'S' WHERE ID_EXTERNO = '"+idAluno+"'";
+			String sqlUpdate = "UPDATE TGFFIN SET AD_PROCESSADO = 'S' WHERE AD_IDEXTERNO = '" + idTitulo + "'";
 			
 			pstmt = jdbc.getPreparedStatement(sqlUpdate);
 			pstmt.executeUpdate();
@@ -1209,22 +1058,21 @@ public class JobGetBaixa implements ScheduledAction {
 		
 	}
 	
-	public void updateResetarAlunos() throws Exception {
+	
+	public void updateResetarTitulo(BigDecimal codEmp) throws Exception {
 		
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		
 		try {
-			System.out.println("Entrou no UPDATE da flag dos alunos baixa");
+			
 			jdbc.openSession();
 			
-			String sqlUpdate = "UPDATE AD_ALUNOS SET INTEGRADO_BAIXA = 'N'";
+			String sqlUpdate = "UPDATE TGFFIN SET AD_PROCESSADO = 'N' WHERE AD_IDEXTERNO IS NOT NULL AND DHBAIXA IS NULL AND CODEMP = " + codEmp + " AND AD_IDALUNO IS NULL";
 			
 			pstmt = jdbc.getPreparedStatement(sqlUpdate);
 			pstmt.executeUpdate();
-			
-			
 			
 		} catch (Exception se) {
 			se.printStackTrace();
@@ -1239,56 +1087,5 @@ public class JobGetBaixa implements ScheduledAction {
 		
 	}
 	
-	private void updateCarga(BigDecimal idCarga) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		try
-		{
-			jdbc.openSession();
-			
-			String sqlUpd = "UPDATE AD_CARGAALUNOS SET INTEGRADO_BAIXA = 'S' WHERE IDCARGA = " + idCarga;
-			
-			pstmt = jdbc.getPreparedStatement(sqlUpd);
-			pstmt.executeUpdate();
-		}
-		catch (SQLException e)
-		{
-			e.printStackTrace();
-		}
-		finally
-		{
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-	}
-	
-	private void resetCarga(BigDecimal codEmp) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		try
-		{
-			jdbc.openSession();
-			
-			String sqlUpd = "UPDATE AD_CARGAALUNOS SET INTEGRADO_BAIXA = 'N' WHERE CODEMP = " + codEmp + " AND INTEGRADO_BAIXA = 'S'";
-			
-			pstmt = jdbc.getPreparedStatement(sqlUpd);
-			pstmt.executeUpdate();
-		}
-		catch (SQLException e)
-		{
-			e.printStackTrace();
-		}
-		finally
-		{
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-	}
-	
+
 }

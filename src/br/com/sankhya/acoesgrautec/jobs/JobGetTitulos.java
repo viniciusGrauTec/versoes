@@ -47,32 +47,47 @@ public class JobGetTitulos implements ScheduledAction {
 		ResultSet rs = null;
 
 		BigDecimal codEmp = BigDecimal.ZERO;
+		BigDecimal idCarga = BigDecimal.ZERO;
 
 		String url = "";
 		String token = "";
+		String matricula = "";
+		
+		int count = 0;
 
-		System.out.println("Iniciou o financeiro");
+		System.out.println("Iniciou o financeiro dos alunos");
 
 		try {
 
 			jdbc.openSession();
 
-			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+			//String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
+			String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
 
-			pstmt = jdbc.getPreparedStatement(query);
+			pstmt = jdbc.getPreparedStatement(query3);
 
 			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
-
+				count++;
 				codEmp = rs.getBigDecimal("CODEMP");
+		        idCarga = rs.getBigDecimal("IDCARGA");
+		        
+		        url = rs.getString("URL");
+		        token = rs.getString("TOKEN");
+		        matricula = rs.getString("MATRICULA");
 
-				url = rs.getString("URL");
-				token = rs.getString("TOKEN");
-
-				cadastrarFinanceiro(url, token, codEmp);
+		        iterarEndpoint(url, token, codEmp, matricula);
+				updateCarga(idCarga);
 
 			}
+			
+			if(count == 0){
+				resetCarga(codEmp);
+			}
+			
+			System.out.println("Finalizou o financeiro dos alunos");
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -102,7 +117,79 @@ public class JobGetTitulos implements ScheduledAction {
 		}
 	}
 	
-	public void cadastrarFinanceiro(String url, String token, BigDecimal codemp) throws Exception{
+
+	  public void iterarEndpoint(String url, String token, BigDecimal codEmp, String matricula)
+	    throws Exception
+	  {
+	    //int pagina = 1;
+		
+	    Date dataAtual = new Date();
+	      
+	    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+	      
+	    String dataFormatada = formato.format(dataAtual);
+	      
+		  
+	    int paginaInicio = 1;
+	    int paginaFim = 10;
+	    /*int paginaAtual = getPagina();
+	    
+	    if(paginaAtual == 0){
+	    	paginaInicio = 1;
+	    	paginaFim = 30;
+	    }else{
+	    	paginaInicio = paginaAtual;
+	    	paginaFim = paginaAtual + 30;
+	    }*/
+	    
+	    try
+	    {
+	      for (;;)
+	      {
+	        System.out.println("While de iteração");
+	        
+	        String[] response = apiGet(url + "/financeiro" + "/titulos?"
+					// + "situacao=A"
+					// + "&quantidade=1"
+					// + "&dataInicial=2023-04-19 00:00:00"
+					// + "&dataFinal=2023-10-24 00:00:00"
+					+ "matricula=" + matricula
+					+ "&pagina=" + paginaInicio
+					//+ "&vencimentoInicial=2024-08-05 00:00:00&vencimentoFinal=2024-08-08 23:59:59"
+					//+ "&dataInicial="+dataFormatada+" 00:00:00&dataFinal="+dataFormatada+" 23:59:59"
+					, token);
+	        
+	        int status = Integer.parseInt(response[0]);
+	        
+	        System.out.println("Status teste: " + status);
+	        System.out.println("pagina: " + paginaInicio);
+	        
+	        String responseString = response[1];
+	        System.out.println("response string alunos: " + responseString);
+	        
+	        if ((responseString.equals("[]")) || (paginaInicio == paginaFim))
+	        {
+	          System.out.println("Entrou no if da quebra");
+	         /* if(responseString.equals("[]")){
+	        	  insertUltPagina(paginaInicio); 
+	          }else{
+	        	  insertUltPagina(paginaFim); 
+	          }*/
+	          
+	          break;
+	        }
+	        cadastrarFinanceiro(response, url, token, codEmp, matricula);
+	        paginaInicio++;
+	      }
+	    }
+	    catch (Exception e)
+	    {
+	      e.printStackTrace();
+	    }
+	  }
+	  
+	
+	public void cadastrarFinanceiro(String[] response, String url, String token, BigDecimal codemp, String matricula) throws Exception{
 
 		SimpleDateFormat formatoEntrada = new SimpleDateFormat(
 				"yyyy-MM-dd HH:mm:ss.SSS");
@@ -115,12 +202,21 @@ public class JobGetTitulos implements ScheduledAction {
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
+		
+		int count = 0;
+		
+		Date dataAtual = new Date();
+	      
+	    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+	      
+	    String dataFormatada = formato.format(dataAtual);
 
 		try {
 
 			jdbc.openSession();
 
-			String sqlP = "SELECT ID_EXTERNO, CODPARC, CODCENCUS FROM AD_ALUNOS WHERE CODEMP = 3";
+			//String sqlP = "SELECT ID_EXTERNO, CODPARC, CODCENCUS, INTEGRADO FROM (SELECT ID_EXTERNO, CODPARC, CODCENCUS, INTEGRADO FROM AD_ALUNOS WHERE CODEMP = "+codemp+" AND NVL(INTEGRADO, 'N') = 'N' ORDER BY ID_EXTERNO, CODPARC DESC ) WHERE ROWNUM <= 300"; //AND ROWNUM <= 60";
+			String sqlP = "SELECT ID_EXTERNO, CODPARC, CODCENCUS, INTEGRADO FROM AD_ALUNOS WHERE ID_EXTERNO = '" + matricula + "' AND CODEMP = " + codemp; //AND ROWNUM <= 60";
 			// + "WHERE ID_EXTERNO = '"+"STB210040"+"'";
 
 			pstmt = jdbc.getPreparedStatement(sqlP);
@@ -128,17 +224,9 @@ public class JobGetTitulos implements ScheduledAction {
 			rs = pstmt.executeQuery();
 
 			while (rs.next()) {
-
+				count++;
 				BigDecimal codparc = rs.getBigDecimal("CODPARC");
 				String aluno = rs.getString("ID_EXTERNO");
-
-				String[] response = apiGet(url + "/financeiro" + "/titulos?"
-						// + "situacao=A"
-						// + "&quantidade=1"
-						// + "&dataInicial=2023-04-19 00:00:00"
-						// + "&dataFinal=2023-10-24 00:00:00"
-						+ "matricula=" + aluno
-						+ "&dataInicial=2024-01-01 00:00:00&dataFinal=2024-01-31 23:59:59", token);
 
 				String responseString = response[1];
 				String responseStatus = response[0];
@@ -211,94 +299,107 @@ public class JobGetTitulos implements ScheduledAction {
 
 						String idAluno = jsonObject.get("aluno_id")
 								.getAsString();
-
-						BigDecimal codCenCus = getCodCenCusPeloCusto(taxaId);
-
 						
-						if(codCenCus != null){
-							if(codCenCus.compareTo(BigDecimal.ZERO) == 0){
+						String situacao_titulo = jsonObject.get("titulo_situacao")
+								.getAsString();
+						
+						if(!situacao_titulo.equalsIgnoreCase("X") && vlrDesdob.compareTo(new BigDecimal("5")) > 0){
+							
+							BigDecimal codCenCus = getCodCenCusPeloCusto(taxaId);
+							
+							if(codCenCus != null){
+								if(codCenCus.compareTo(BigDecimal.ZERO) == 0){
+									codCenCus = getCodCenCus(idCurso);
+								}
+							}else{
 								codCenCus = getCodCenCus(idCurso);
 							}
-						}else{
-							codCenCus = getCodCenCus(idCurso);
-						}
-						
-						if(codCenCus != null){
-							if(codCenCus.compareTo(BigDecimal.ZERO) == 0){
+							
+							if(codCenCus != null){
+								if(codCenCus.compareTo(BigDecimal.ZERO) == 0){
+									codCenCus = rs.getBigDecimal("CODCENCUS");
+								}
+							}else{
 								codCenCus = rs.getBigDecimal("CODCENCUS");
 							}
-						}else{
-							codCenCus = rs.getBigDecimal("CODCENCUS");
-						}
 
-						System.out.println("CodCenCus: " + codCenCus);
-						System.out.println("Taxa id: " + taxaId);
-						
-						// Para os benefícios, você pode fazer um loop interno
-						/*
-						 * JsonArray beneficiosArray = jsonObject
-						 * .getAsJsonArray("beneficios"); for (JsonElement
-						 * beneficioElement : beneficiosArray) { JsonObject
-						 * beneficioObject = beneficioElement
-						 * .getAsJsonObject();
-						 * 
-						 * System.out .println("Beneficio ID: " +
-						 * beneficioObject.get("beneficio_id") .getAsString());
-						 * System.out.println("Beneficio Descrição: " +
-						 * beneficioObject.get("beneficio_descricao")
-						 * .getAsString());
-						 * 
-						 * }
-						 */
+							System.out.println("CodCenCus: " + codCenCus);
+							System.out.println("Taxa id: " + taxaId);
+							
+							// Para os benefícios, você pode fazer um loop interno
+							/*
+							 * JsonArray beneficiosArray = jsonObject
+							 * .getAsJsonArray("beneficios"); for (JsonElement
+							 * beneficioElement : beneficiosArray) { JsonObject
+							 * beneficioObject = beneficioElement
+							 * .getAsJsonObject();
+							 * 
+							 * System.out .println("Beneficio ID: " +
+							 * beneficioObject.get("beneficio_id") .getAsString());
+							 * System.out.println("Beneficio Descrição: " +
+							 * beneficioObject.get("beneficio_descricao")
+							 * .getAsString());
+							 * 
+							 * }
+							 */
 
-						System.out.println("CodParc: " + codparc);
+							System.out.println("CodParc: " + codparc);
+							
+							if(validarDataLimite(dtPedido)){
+								
+								if (codparc.compareTo(BigDecimal.ZERO) != 0) {
+									System.out.println("Entrou no parceiro: " + codparc);
+									if (validarFin(idFin, codemp)) {
+										System.out.println("Entrou no financeiro");
+										
+										BigDecimal codConta = getCodConta(codemp);
+										
+										BigDecimal codBanco = getCodBanco(codemp);
+										
+										String recDesp;
+										
+										if(getRecDesp(taxaId)){
+											recDesp = "-1";
+										}else{
+											recDesp = "1";
+										}
+										
+										BigDecimal nufin = insertFin(codemp, /* codemp */
+												codCenCus, /* codCenCus */
+												getNatureza(taxaId), /* codNat */
+												BigDecimal.valueOf(1300), /* codTipOper */
+												codparc, /* codparc */
+												BigDecimal.valueOf(4), /* codtiptit */
+												vlrDesdob, /* vlrDesdob */
+												dataVencFormatada, /* dtvenc */
+												// "25/11/2023", /* dtvenc */
+												dtPedido, /* dtPedido */
+												// "22/11/2023", /* dtPedido */
+												idFin, aluno, codConta, codBanco, recDesp);
+										System.out.println("Financeiro cadastrado");
+										/*insertLogIntegracao(
+												"Financeiro com Id Externo: "
+														+ idFin
+														+ " Criado Com Sucesso, numero unico interno: "
+														+ nufin, "Sucesso");*/
+									}else{
+										System.out.println("Financeiro " + idFin + " ja cadastrado para o parceiro: " + codparc);
+									}
 
-						if (codparc.compareTo(BigDecimal.ZERO) != 0) {
-							System.out.println("Entrou no parceiro: " + codparc);
-							if (validarFin(idFin)) {
-								System.out.println("Entrou no financeiro");
-								
-								BigDecimal codConta = getCodConta(codemp);
-								
-								BigDecimal codBanco = getCodBanco(codemp);
-								
-								String recDesp;
-								
-								if(getRecDesp(taxaId)){
-									recDesp = "-1";
-								}else{
-									recDesp = "1";
+								} else {
+									/*insertLogIntegracao("Aluno com Id : " + idAluno
+											+ " não Encontrado", "Aviso");*/
 								}
 								
-								BigDecimal nufin = insertFin(codemp, /* codemp */
-										codCenCus, /* codCenCus */
-										getNatureza(taxaId), /* codNat */
-										BigDecimal.valueOf(1300), /* codTipOper */
-										codparc, /* codparc */
-										BigDecimal.valueOf(4), /* codtiptit */
-										vlrDesdob, /* vlrDesdob */
-										dataVencFormatada, /* dtvenc */
-										// "25/11/2023", /* dtvenc */
-										dtPedido, /* dtPedido */
-										// "22/11/2023", /* dtPedido */
-										idFin, aluno, codConta, codBanco, recDesp);
-								System.out.println("Financeiro cadastrado");
-								insertLogIntegracao(
-										"Financeiro com Id Externo: "
-												+ idFin
-												+ " Criado Com Sucesso, numero unico interno: "
-												+ nufin, "Sucesso");
 							}else{
-								System.out.println("Financeiro " + idFin + " ja cadastrado para o parceiro: " + codparc);
+								System.out.println("Data pedido inferior a data limite");
 							}
-
-						} else {
-							insertLogIntegracao("Aluno com Id : " + idAluno
-									+ " não Encontrado", "Aviso");
+							
 						}
-
 					}
-
+					
+					//updateFlagAlunoIntegrado(aluno);
+					
 				} else {
 					insertLogIntegracao(
 							"Status retornado pela API diferente de 200, "
@@ -307,7 +408,11 @@ public class JobGetTitulos implements ScheduledAction {
 				}
 
 			}
-
+			
+			/*if(count == 0){
+				updateResetarAlunos();
+			}*/
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 			try {
@@ -875,7 +980,7 @@ public class JobGetTitulos implements ScheduledAction {
 		return id;
 	}
 
-	public boolean validarFin(String idFin) throws Exception {
+	public boolean validarFin(String idFin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -887,7 +992,7 @@ public class JobGetTitulos implements ScheduledAction {
 
 			jdbc.openSession();
 
-			String sqlNota = "SELECT COUNT(0) AS COUNT FROM TGFFIN WHERE AD_IDEXTERNO = ?";
+			String sqlNota = "SELECT COUNT(0) AS COUNT FROM TGFFIN WHERE AD_IDEXTERNO = ? AND CODEMP = " + codemp;
 
 			pstmt = jdbc.getPreparedStatement(sqlNota);
 			pstmt.setString(1, idFin);
@@ -913,6 +1018,50 @@ public class JobGetTitulos implements ScheduledAction {
 			jdbc.closeSession();
 		}
 
+		if (count > 0) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+	
+	public boolean validarDataLimite(String data) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		
+		int count = 0;
+		
+		try {
+			
+			jdbc.openSession();
+			
+			String sqlNota = "SELECT COUNT(0) AS COUNT FROM DUAL WHERE TO_DATE('"+data+"') < ADD_MONTHS(SYSDATE, 12 * -(SELECT NVL(INTEIRO,0) FROM TSIPAR WHERE CHAVE = 'LIMINFANO')) ";
+			
+			pstmt = jdbc.getPreparedStatement(sqlNota);
+			
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {
+				
+				count = rs.getInt("COUNT");
+				
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+		
 		if (count > 0) {
 			return false;
 		} else {
@@ -1013,7 +1162,9 @@ public class JobGetTitulos implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
+		
+		try {
+		
 		jdbc.openSession();
 
 		String sqlUpdate = "UPDATE TGFNUM SET ULTCOD = NVL(ULTCOD, 0) + 1  WHERE ARQUIVO = 'TGFFIN'";
@@ -1021,17 +1172,79 @@ public class JobGetTitulos implements ScheduledAction {
 		pstmt = jdbc.getPreparedStatement(sqlUpdate);
 		pstmt.executeUpdate();
 
-		try {
+		
+			
+		} catch (Exception se) {
+			se.printStackTrace();
+		}finally{
 			if (pstmt != null) {
 				pstmt.close();
 			}
 			if (jdbc != null) {
 				jdbc.closeSession();
 			}
-		} catch (Exception se) {
-			se.printStackTrace();
 		}
 
+	}
+	
+	public void updateFlagAlunoIntegrado(String idAluno) throws Exception {
+		
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		
+		try {
+			
+			jdbc.openSession();
+			
+			String sqlUpdate = "UPDATE AD_ALUNOS SET INTEGRADO = 'S' WHERE ID_EXTERNO = '"+idAluno+"'";
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpdate);
+			pstmt.executeUpdate();
+			
+			
+			
+		} catch (Exception se) {
+			se.printStackTrace();
+		}finally{
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			if (jdbc != null) {
+				jdbc.closeSession();
+			}
+		}
+		
+	}
+	
+	public void updateResetarAlunos() throws Exception {
+		
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		
+		try {
+			System.out.println("Entrou no UPDATE da flag dos alunos");
+			jdbc.openSession();
+			
+			String sqlUpdate = "UPDATE AD_ALUNOS SET INTEGRADO = 'N'";
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpdate);
+			pstmt.executeUpdate();
+			
+			
+			
+		} catch (Exception se) {
+			se.printStackTrace();
+		}finally{
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			if (jdbc != null) {
+				jdbc.closeSession();
+			}
+		}
+		
 	}
 
 	public void insertLogIntegracao(String descricao, String status)
@@ -1040,7 +1253,9 @@ public class JobGetTitulos implements ScheduledAction {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
+		
+		try {
+		
 		jdbc.openSession();
 
 		String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, STATUS)"
@@ -1051,17 +1266,71 @@ public class JobGetTitulos implements ScheduledAction {
 		pstmt.setString(2, status);
 		pstmt.executeUpdate();
 
-		try {
+		
+			
+		} catch (Exception se) {
+			se.printStackTrace();
+		}finally{
 			if (pstmt != null) {
 				pstmt.close();
 			}
 			if (jdbc != null) {
 				jdbc.closeSession();
 			}
-		} catch (Exception se) {
-			se.printStackTrace();
 		}
 
 	}
-
+	
+	private void updateCarga(BigDecimal idCarga) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try
+		{
+			jdbc.openSession();
+			
+			String sqlUpd = "UPDATE AD_CARGAALUNOS SET INTEGRADO_FIN = 'S' WHERE IDCARGA = " + idCarga;
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpd);
+			pstmt.executeUpdate();
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+	}
+	
+	private void resetCarga(BigDecimal codEmp) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try
+		{
+			jdbc.openSession();
+			
+			String sqlUpd = "UPDATE AD_CARGAALUNOS SET INTEGRADO_FIN = 'N' WHERE CODEMP = " + codEmp + " AND INTEGRADO_FIN = 'S'";
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpd);
+			pstmt.executeUpdate();
+		}
+		catch (SQLException e)
+		{
+			e.printStackTrace();
+		}
+		finally
+		{
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+	}
+	
 }
