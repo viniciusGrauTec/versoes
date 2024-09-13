@@ -58,12 +58,12 @@ public class JobGetBaixaMap implements ScheduledAction {
 			// execução para evitar múltiplos acessos
 
 			// Banco
-			List<Object[]> listInfBanco = retornarInformacoesBanco();
+			List<Object[]> listInfBancoConta = retornarInformacoesBancoConta();
 			Map<String, BigDecimal> mapaInfBanco = new HashMap<String, BigDecimal>();
-			for (Object[] obj : listInfBanco) {
-				BigDecimal codBcoObj = (BigDecimal) obj[0];
+			for (Object[] obj : listInfBancoConta) {
 				Long codEmpObj = (Long) obj[1];
 				Long idExternoObj = (Long) obj[2];
+				BigDecimal codBcoObj = (BigDecimal) obj[3];
 
 				if (mapaInfBanco.get(codEmpObj + "###" + idExternoObj) == null) {
 					mapaInfBanco.put(codEmpObj + "###" + idExternoObj,
@@ -72,9 +72,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 			}
 
 			// Conta
-			List<Object[]> listInfConta = retornarInformacoesConta();
 			Map<String, BigDecimal> mapaInfConta = new HashMap<String, BigDecimal>();
-			for (Object[] obj : listInfConta) {
+			for (Object[] obj : listInfBancoConta) {
 				BigDecimal codCtabCointObj = (BigDecimal) obj[0];
 				Long codEmpObj = (Long) obj[1];
 				Long idExternoObj = (Long) obj[2];
@@ -82,6 +81,92 @@ public class JobGetBaixaMap implements ScheduledAction {
 				if (mapaInfConta.get(codEmpObj + "###" + idExternoObj) == null) {
 					mapaInfConta.put(codEmpObj + "###" + idExternoObj,
 							codCtabCointObj);
+				}
+			}
+
+			// Alunos
+			List<Object[]> listInfAlunos = retornarInformacoesAlunos();
+			Map<Long, BigDecimal> mapaInfAlunos = new HashMap<Long, BigDecimal>();
+			for (Object[] obj : listInfAlunos) {
+				BigDecimal codParc = (BigDecimal) obj[0];
+				Long idExternoObj = (Long) obj[1];
+
+				if (mapaInfAlunos.get(idExternoObj) == null) {
+					mapaInfAlunos.put(idExternoObj, codParc);
+				}
+			}
+
+			// Financeiro
+			List<Object[]> listInfFinanceiro = retornarInformacoesFinanceiro();
+			Map<String, BigDecimal> mapaInfFinanceiro = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				Long codEmpObj = (Long) obj[1];
+				Long idExternoObj = (Long) obj[2];
+
+				if (mapaInfFinanceiro.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfFinanceiro.put(codEmpObj + "###" + idExternoObj,
+							nuFin);
+				}
+			}
+
+			// NuFin Baixados
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado = new HashMap<BigDecimal, String>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				String baixado = (String) obj[3];
+				if (mapaInfFinanceiroBaixado.get(nuFin) == null) {
+					mapaInfFinanceiroBaixado.put(nuFin, baixado);
+				}
+
+			}
+
+			// Valor Desdobramento
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor = new HashMap<BigDecimal, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal vlrDesdob = (BigDecimal) obj[4];
+				if (mapaInfFinanceiroValor.get(nuFin) == null) {
+					mapaInfFinanceiroValor.put(nuFin, vlrDesdob);
+				}
+
+			}
+
+			// Nro Banco
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco = new HashMap<BigDecimal, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal nuBco = (BigDecimal) obj[5];
+				if (mapaInfFinanceiroBanco.get(nuFin) == null) {
+					mapaInfFinanceiroBanco.put(nuFin, nuBco);
+				}
+
+			}
+
+			// Tipo de Titulo
+			List<Object[]> listInfTipoTitulo = retornarInformacoesTipoTitulo();
+			Map<String, BigDecimal> mapaInfTipoTitulo = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfTipoTitulo) {
+				BigDecimal codTipTit = (BigDecimal) obj[0];
+				Long codEmpObj = (Long) obj[1];
+				Long idExternoObj = (Long) obj[2];
+
+				if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj,
+							codTipTit);
+				}
+			}
+
+			// Menor Movimentação Bancária Por Conta
+			List<Object[]> listInfMenorDataMovBancariaPorConta = retornarInformacoesMenorDataMovBancariaPorConta();
+			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta = new HashMap<Long, Date>();
+			for (Object[] obj : listInfMenorDataMovBancariaPorConta) {
+				Long codCtabCointObj = (Long) obj[0];
+				Date dtMinRef = (Date) obj[1];
+
+				if (mapaInfMenorDataMovBancariaPorConta.get(codCtabCointObj) == null) {
+					mapaInfMenorDataMovBancariaPorConta.put(codCtabCointObj,
+							dtMinRef);
 				}
 			}
 
@@ -109,7 +194,10 @@ public class JobGetBaixaMap implements ScheduledAction {
 				matricula = rs.getString("MATRICULA");
 
 				efetuarBaixa(url, token, codEmp, matricula, mapaInfBanco,
-						mapaInfConta, tempoAnterior);
+						mapaInfConta, mapaInfAlunos, mapaInfFinanceiro,
+						mapaInfTipoTitulo, mapaInfMenorDataMovBancariaPorConta,
+						mapaInfFinanceiroBaixado, mapaInfFinanceiroValor,
+						mapaInfFinanceiroBanco, tempoAnterior);
 
 				tempoAnterior = printLogDebug(tempoAnterior,
 						"onTime - efetuarBaixa da empresa(" + codEmp + ")");
@@ -160,8 +248,15 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 	public void efetuarBaixa(String url, String token, BigDecimal codemp,
 			String matricula, Map<String, BigDecimal> mapaInfBanco,
-			Map<String, BigDecimal> mapaInfConta, long tempoAnterior)
-			throws Exception {
+			Map<String, BigDecimal> mapaInfConta,
+			Map<Long, BigDecimal> mapaInfAlunos,
+			Map<String, BigDecimal> mapaInfFinanceiro,
+			Map<String, BigDecimal> mapaInfTipoTitulo,
+			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta,
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
+			long tempoAnterior) throws Exception {
 
 		System.out.println("Entrou no job baixa");
 
@@ -196,38 +291,22 @@ public class JobGetBaixaMap implements ScheduledAction {
 		ResultSet rs = null;
 
 		String dataEstorno = "";
-		System.out.println("Entrou aqui JOBBaixas");
-
-		int count = 0;
 
 		BigDecimal nufin = BigDecimal.ZERO;
 
 		try {
 
 			jdbc.openSession();
-			String sqlP = "SELECT ID_EXTERNO, CODPARC FROM AD_ALUNOS WHERE ID_EXTERNO = '"
-					+ matricula + "'";// NVL(INTEGRADO_BAIXA, 'N') = 'N' AND
-										// CODEMP = "+codemp+" AND ROWNUM <=
-										// 300";
 
-			pstmt = jdbc.getPreparedStatement(sqlP);
-
-			rs = pstmt.executeQuery();
-
-			tempoAnterior = printLogDebug(tempoAnterior,
-					"efetuarBaixa - SQL busca Alunos(" + sqlP + ")");
-
-			while (rs.next()) {
-				count++;
-				String aluno = rs.getString("ID_EXTERNO");
-
+			BigDecimal codParc = mapaInfAlunos.get(matricula);
+			if (codParc != null) {
 				String[] response = apiGet(url
 						+ "/financeiro"
 						+ "/baixas"
 						// + "?quantidade=1"
 						// + "?dataInicial="+dataAtualFormatada+" 00:00:00"
 						+ "?matricula="
-						+ aluno
+						+ matricula
 						// +
 						// "&vencimentoInicial=2024-08-04 00:00:00&vencimentoFinal=2024-08-05 23:59:59"
 						+ "&dataInicial=" + dataUmDiaFormatada
@@ -274,7 +353,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 					String dataBaixaFormatada = formatoDesejado.format(data);
 
-					nufin = getNufin(tituloId);
+					nufin = mapaInfFinanceiro.get(codemp + "###" + tituloId);
+
 					tempoAnterior = printLogDebug(tempoAnterior,
 							"efetuarBaixa - nufin by tituloId");
 
@@ -316,11 +396,10 @@ public class JobGetBaixaMap implements ScheduledAction {
 								+ formas_de_pagamentoObject.get(
 										"forma_pagamento_id").getAsString());
 
-						codTipTit = getTipTit(
-								formas_de_pagamentoObject.get(
-										"forma_pagamento_id").getAsString(),
-								codemp);
-
+						codTipTit = mapaInfBanco.get(codemp
+								+ "###"
+								+ formas_de_pagamentoObject.get(
+										"forma_pagamento_id").getAsString());
 					}
 
 					tempoAnterior = printLogDebug(tempoAnterior,
@@ -331,15 +410,20 @@ public class JobGetBaixaMap implements ScheduledAction {
 							+ jsonObject.get("baixa_estorno_data"));
 
 					if (nufin.compareTo(BigDecimal.ZERO) != 0) {
-						if (validarDataMinMovBancaria(codConta,
-								dataBaixaFormatada)) {
+
+						Date dtMinMovConta = mapaInfMenorDataMovBancariaPorConta
+								.get(codConta);
+
+						if (data.after(dtMinMovConta)) {
 							if (dataEstorno == null) {
-								if (validarBaixa(nufin)
-										&& nufin.compareTo(BigDecimal
-												.valueOf(113328)) != 0) {
+
+								if ("N".equalsIgnoreCase(mapaInfFinanceiroBaixado
+										.get(nufin))) {
 
 									System.out.println("Chegou no update");
-									if (vlrBaixa.compareTo(getVlrDesdob(nufin)) == 0) {
+									if (vlrBaixa
+											.compareTo(mapaInfFinanceiroValor
+													.get(nufin)) == 0) {
 										System.out
 												.println("Entrou no if do valor");
 										updateFin(codTipTit, nufin, codBanco,
@@ -390,9 +474,10 @@ public class JobGetBaixaMap implements ScheduledAction {
 											+ " já baixado");
 								}
 							} else {
-								if (!validarBaixa(nufin)) {
+								if ("S".equalsIgnoreCase(mapaInfFinanceiroBaixado
+										.get(nufin))) {
 
-									nubco = getNubco(nufin);
+									nubco = mapaInfFinanceiroBanco.get(nufin);
 									updateFinExtorno(nufin);
 									deleteTgfMbc(nubco);
 									/*
@@ -422,14 +507,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 					}
 
 				}
-
-				// updateFlagAlunoIntegrado(aluno);
-
 			}
-
-			/*
-			 * if(count == 0){ updateResetarAlunos(); }
-			 */
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -520,272 +598,6 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 		return new String[] { Integer.toString(status), response };
 
-	}
-
-	public BigDecimal getNufin(String idTitulo) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		BigDecimal id = BigDecimal.ZERO;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "SELECT NUFIN FROM TGFFIN WHERE AD_IDEXTERNO = ?";
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-			pstmt.setString(1, idTitulo.trim());
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				id = rs.getBigDecimal("NUFIN");
-
-				if (id == null) {
-					id = BigDecimal.ZERO;
-				}
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		return id;
-	}
-
-	public BigDecimal getNubco(BigDecimal nufin) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		BigDecimal id = BigDecimal.ZERO;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "SELECT NUBCO FROM TGFFIN WHERE NUFIN = " + nufin;
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				id = rs.getBigDecimal("NUBCO");
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		return id;
-	}
-
-	public boolean validarBaixa(BigDecimal nufin) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		int count = 0;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "SELECT COUNT(0) AS COUNT " + "FROM TGFFIN "
-					+ "WHERE NUFIN = ? " + "AND DHBAIXA IS NOT NULL "
-					+ "AND VLRBAIXA IS NOT NULL "
-					+ "AND CODUSUBAIXA IS NOT NULL";
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-			pstmt.setBigDecimal(1, nufin);
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				count = rs.getInt("COUNT");
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		if (count > 0) {
-			return false;
-		} else {
-			return true;
-		}
-
-	}
-
-	public boolean validarDataMinMovBancaria(BigDecimal codConta,
-			String dataBaixa) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		int count = 0;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "SELECT COUNT(0) AS COUNT FROM (SELECT MIN(REFERENCIA) DTREF "
-					+ "	    FROM TGFSBC "
-					+ "	   WHERE CODCTABCOINT = "
-					+ codConta
-					+ ") "
-					+ "	WHERE DTREF > TO_DATE('"
-					+ dataBaixa
-					+ "', 'DD/MM/YYYY')";
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				count = rs.getInt("COUNT");
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		if (count > 0) {
-			return false;
-		} else {
-			return true;
-		}
-
-	}
-
-	public BigDecimal getTipTit(String idExterno, BigDecimal codEmp)
-			throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		BigDecimal id = BigDecimal.ZERO;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "SELECT CODTIPTIT " + "FROM AD_TIPTITINTEGRACAO "
-					+ "WHERE CODEMP = ? " + "AND IDEXTERNO = ?";
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-			pstmt.setBigDecimal(1, codEmp);
-			pstmt.setString(2, idExterno.trim());
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				id = rs.getBigDecimal("CODTIPTIT");
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		return id;
-	}
-
-	public BigDecimal getVlrDesdob(BigDecimal nufin) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		BigDecimal vlrDesdob = BigDecimal.ZERO;
-
-		try {
-
-			jdbc.openSession();
-
-			String sqlNota = "select VLRDESDOB FROM TGFFIN WHERE NUFIN = "
-					+ nufin;
-
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-
-			rs = pstmt.executeQuery();
-
-			if (rs.next()) {
-
-				vlrDesdob = rs.getBigDecimal("VLRDESDOB");
-
-			}
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-
-		return vlrDesdob;
 	}
 
 	public void updateFin(BigDecimal codtiptit, BigDecimal nufin,
@@ -1266,7 +1078,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 		return tempoAnterior;
 	}
 
-	public List<Object[]> retornarInformacoesBanco() throws Exception {
+	public List<Object[]> retornarInformacoesBancoConta() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1274,13 +1086,126 @@ public class JobGetBaixaMap implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "	SELECT 	CODBCO, CODEMP, IDEXTERNO ";
+			String sql = "	SELECT 	CODCTABCOINT, CODEMP, IDEXTERNO, CODBCO ";
 			sql += "		FROM  	ad_infobankbaixa ";
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
+				Object[] ret = new Object[4];
+				ret[0] = rs.getBigDecimal("CODCTABCOINT");
+				ret[1] = rs.getLong("CODEMP");
+				ret[2] = rs.getLong("IDEXTERNO");
+				ret[3] = rs.getLong("CODBCO");
+
+				listRet.add(ret);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+
+		return listRet;
+	}
+
+	public List<Object[]> retornarInformacoesAlunos() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		List<Object[]> listRet = new ArrayList<>();
+		try {
+			jdbc.openSession();
+			String sql = "	SELECT 	CODPARC, ID_EXTERNO ";
+			sql += "		FROM  	AD_ALUNOS ";
+			pstmt = jdbc.getPreparedStatement(sql);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+				Object[] ret = new Object[2];
+				ret[0] = rs.getBigDecimal("CODPARC");
+				ret[1] = rs.getLong("ID_EXTERNO");
+
+				listRet.add(ret);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+
+		return listRet;
+	}
+
+	public List<Object[]> retornarInformacoesFinanceiro() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		List<Object[]> listRet = new ArrayList<>();
+		try {
+			jdbc.openSession();
+			String sql = "	SELECT 	CODEMP, NUFIN, AD_IDEXTERNO, (CASE WHEN DHBAIXA IS NOT NULL THEN 'S' ELSE 'N' END) BAIXADO, VLRDESDOB, NUBCO ";
+			sql += "		FROM  	TGFFIN ";
+			sql += "		WHERE  	RECDESP = 1 ";
+			sql += "		    AND PROVISAO = 'N' ";
+			pstmt = jdbc.getPreparedStatement(sql);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+				Object[] ret = new Object[6];
+				ret[0] = rs.getBigDecimal("NUFIN");
+				ret[1] = rs.getLong("CODEMP");
+				ret[2] = rs.getLong("AD_IDEXTERNO");
+				ret[3] = rs.getString("BAIXADO");
+				ret[4] = rs.getBigDecimal("VLRDESDOB");
+				ret[5] = rs.getBigDecimal("NUBCO");
+
+				listRet.add(ret);
+			}
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+
+		return listRet;
+	}
+
+	public List<Object[]> retornarInformacoesTipoTitulo() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		List<Object[]> listRet = new ArrayList<>();
+		try {
+			jdbc.openSession();
+			String sql = "	SELECT 	CODEMP, CODTIPTIT, IDEXTERNO ";
+			sql += "		FROM  	AD_TIPTITINTEGRACAO ";
+			pstmt = jdbc.getPreparedStatement(sql);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
 				Object[] ret = new Object[3];
-				ret[0] = rs.getBigDecimal("CODBCO");
+				ret[0] = rs.getBigDecimal("CODTIPTIT");
 				ret[1] = rs.getLong("CODEMP");
 				ret[2] = rs.getLong("IDEXTERNO");
 
@@ -1302,7 +1227,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 		return listRet;
 	}
 
-	public List<Object[]> retornarInformacoesConta() throws Exception {
+	public List<Object[]> retornarInformacoesMenorDataMovBancariaPorConta()
+			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1310,15 +1236,15 @@ public class JobGetBaixaMap implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "	SELECT 	CODCTABCOINT, CODEMP, IDEXTERNO ";
-			sql += "		FROM  	ad_infobankbaixa ";
+			String sql = "	SELECT 	CODCTABCOINT, MIN(REFERENCIA) DTREF ";
+			sql += "		FROM  	TGFSBC ";
+			sql += "	    GROUP BY CODCTABCOINT ";
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
-				Object[] ret = new Object[3];
-				ret[0] = rs.getBigDecimal("CODCTABCOINT");
-				ret[1] = rs.getLong("CODEMP");
-				ret[2] = rs.getLong("IDEXTERNO");
+				Object[] ret = new Object[2];
+				ret[0] = rs.getLong("CODCTABCOINT");
+				ret[1] = rs.getDate("DTREF");
 
 				listRet.add(ret);
 			}
