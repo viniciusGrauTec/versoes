@@ -86,10 +86,10 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 			// Alunos
 			List<Object[]> listInfAlunos = retornarInformacoesAlunos();
-			Map<Long, BigDecimal> mapaInfAlunos = new HashMap<Long, BigDecimal>();
+			Map<String, BigDecimal> mapaInfAlunos = new HashMap<String, BigDecimal>();
 			for (Object[] obj : listInfAlunos) {
 				BigDecimal codParc = (BigDecimal) obj[0];
-				Long idExternoObj = (Long) obj[1];
+				String idExternoObj = (String) obj[1];
 
 				if (mapaInfAlunos.get(idExternoObj) == null) {
 					mapaInfAlunos.put(idExternoObj, codParc);
@@ -173,7 +173,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 			jdbc.openSession();
 
 			// Depois rever para ativar todos
-			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
+			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 ";
 			String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
 
 			pstmt = jdbc.getPreparedStatement(query3);
@@ -185,6 +185,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 			while (rs.next()) {
 				count++;
+				
+				System.out.println("Contagem: " + count);
 
 				codEmp = rs.getBigDecimal("CODEMP");
 				idCarga = rs.getBigDecimal("IDCARGA");
@@ -202,14 +204,14 @@ public class JobGetBaixaMap implements ScheduledAction {
 				tempoAnterior = printLogDebug(tempoAnterior,
 						"onTime - efetuarBaixa da empresa(" + codEmp + ")");
 
-				updateCarga(idCarga);
+				//updateCarga(idCarga);
 
 				tempoAnterior = printLogDebug(tempoAnterior,
 						"onTime - updateCarga da empresa(" + codEmp + ")");
 			}
 			System.out.println("Chegou ao final da baixa");
 			if (count == 0) {
-				resetCarga(codEmp);
+				//resetCarga(codEmp);
 				tempoAnterior = printLogDebug(tempoAnterior, "resetCarga");
 			}
 
@@ -249,7 +251,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 	public void efetuarBaixa(String url, String token, BigDecimal codemp,
 			String matricula, Map<String, BigDecimal> mapaInfBanco,
 			Map<String, BigDecimal> mapaInfConta,
-			Map<Long, BigDecimal> mapaInfAlunos,
+			Map<String, BigDecimal> mapaInfAlunos,
 			Map<String, BigDecimal> mapaInfFinanceiro,
 			Map<String, BigDecimal> mapaInfTipoTitulo,
 			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta,
@@ -299,6 +301,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 			jdbc.openSession();
 
 			BigDecimal codParc = mapaInfAlunos.get(matricula);
+			
 			if (codParc != null) {
 				String[] response = apiGet(url
 						+ "/financeiro"
@@ -426,17 +429,17 @@ public class JobGetBaixaMap implements ScheduledAction {
 													.get(nufin)) == 0) {
 										System.out
 												.println("Entrou no if do valor");
-										updateFin(codTipTit, nufin, codBanco,
+										/*updateFin(codTipTit, nufin, codBanco,
 												codConta, vlrDesconto,
 												vlrJuros, vlrMulta,
-												vlrOutrosAcrescimos);
+												vlrOutrosAcrescimos);*/
 									} else {
 										System.out
 												.println("Entrou no else do valor");
-										updateFinComVlrBaixa(codTipTit, nufin,
+										/*updateFinComVlrBaixa(codTipTit, nufin,
 												codBanco, codConta, vlrBaixa,
 												vlrDesconto, vlrJuros,
-												vlrMulta, vlrOutrosAcrescimos);
+												vlrMulta, vlrOutrosAcrescimos);*/
 									}
 
 									System.out.println("vlrDesconto: "
@@ -450,8 +453,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 									 * vlrMulta);
 									 */
 
-									nubco = insertMovBancaria(codConta,
-											vlrBaixa, nufin, dataBaixaFormatada);
+									/*nubco = insertMovBancaria(codConta,
+											vlrBaixa, nufin, dataBaixaFormatada);*/
 
 									System.out
 											.println("Passou da mov bancaria: "
@@ -459,8 +462,8 @@ public class JobGetBaixaMap implements ScheduledAction {
 
 									System.out.println("vlrBaixa: " + vlrBaixa);
 
-									updateBaixa(nufin, nubco, vlrBaixa,
-											dataBaixaFormatada);
+									/*updateBaixa(nufin, nubco, vlrBaixa,
+											dataBaixaFormatada);*/
 
 									movBanc = true;
 
@@ -477,9 +480,10 @@ public class JobGetBaixaMap implements ScheduledAction {
 								if ("S".equalsIgnoreCase(mapaInfFinanceiroBaixado
 										.get(nufin))) {
 
-									nubco = mapaInfFinanceiroBanco.get(nufin);
+									/*nubco = mapaInfFinanceiroBanco.get(nufin);
 									updateFinExtorno(nufin);
-									deleteTgfMbc(nubco);
+									deleteTgfMbc(nubco);*/
+									
 									/*
 									 * insertLogIntegracao(
 									 * "Estorno Efetuado com sucesso",
@@ -1095,13 +1099,14 @@ public class JobGetBaixaMap implements ScheduledAction {
 				ret[0] = rs.getBigDecimal("CODCTABCOINT");
 				ret[1] = rs.getLong("CODEMP");
 				ret[2] = rs.getLong("IDEXTERNO");
-				ret[3] = rs.getLong("CODBCO");
+				ret[3] = rs.getBigDecimal("CODBCO");
 
 				listRet.add(ret);
 			}
 
 		} catch (SQLException e) {
 			e.printStackTrace();
+			throw new Exception("Erro Ao Executar Metodo retornarInformacoesBancoConta");
 		} finally {
 			if (rs != null) {
 				rs.close();
@@ -1130,7 +1135,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 			while (rs.next()) {
 				Object[] ret = new Object[2];
 				ret[0] = rs.getBigDecimal("CODPARC");
-				ret[1] = rs.getLong("ID_EXTERNO");
+				ret[1] = rs.getString("ID_EXTERNO");
 
 				listRet.add(ret);
 			}

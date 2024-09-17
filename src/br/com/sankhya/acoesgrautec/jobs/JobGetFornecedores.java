@@ -197,8 +197,8 @@ public class JobGetFornecedores
         if (fornecedorEndereco == null)
         {
           fornecedorEndereco = " ";
-          insertLogIntegracao("Fornecedor com variável Endereço nula, Endereço cadastrado como vazio: ", "Aviso", 
-            fornecedorNome);
+          /*insertLogIntegracao("Fornecedor com variável Endereço nula, Endereço cadastrado como vazio: ", "Aviso", 
+            fornecedorNome);*/
         }
         String fornecedorBairro = jsonObject.get("fornecedor_bairro")
           .isJsonNull() ? null : jsonObject.get(
@@ -206,15 +206,15 @@ public class JobGetFornecedores
         if (fornecedorBairro == null)
         {
           fornecedorBairro = " ";
-          insertLogIntegracao("Fornecedor com variável Bairro nulo, Bairro cadastrado como vazio: ", "Aviso", 
-            fornecedorNome);
+          /*insertLogIntegracao("Fornecedor com variável Bairro nulo, Bairro cadastrado como vazio: ", "Aviso", 
+            fornecedorNome);*/
         }
         String fornecedorCidade = jsonObject.get("fornecedor_cidade")
           .isJsonNull() ? null : jsonObject.get(
           "fornecedor_cidade").getAsString();
         if (fornecedorCidade == null) {
-          insertLogIntegracao("Fornecedor com variável Cidade nulo, não será cadastrado: ", "Aviso", 
-            fornecedorNome);
+          /*insertLogIntegracao("Fornecedor com variável Cidade nulo, não será cadastrado: ", "Aviso", 
+            fornecedorNome);*/
         }
         String fornecedorUf = jsonObject.get("fornecedor_uf")
           .isJsonNull() ? null : jsonObject.get("fornecedor_uf")
@@ -258,8 +258,8 @@ public class JobGetFornecedores
           .isJsonNull() ? null : jsonObject.get(
           "fornecedor_cpfcnpj").getAsString();
         if (fornecedorCpfcnpj == null) {
-          insertLogIntegracao("Fornecedor com variável CpfCnpj nulo, não será cadastrado: ", "Aviso", 
-            fornecedorNome);
+          /*insertLogIntegracao("Fornecedor com variável CpfCnpj nulo, não será cadastrado: ", "Aviso", 
+            fornecedorNome);*/
         }
         String fornecedorEmail = jsonObject.get("fornecedor_email")
           .isJsonNull() ? null : jsonObject.get(
@@ -273,8 +273,8 @@ public class JobGetFornecedores
           .isJsonNull() ? null : jsonObject.get(
           "fornecedor_ativo").getAsString();
         if (fornecedorAtivo == null) {
-          insertLogIntegracao("Fornecedor com variável Ativo nulo, não será cadastrado: ", "Aviso", 
-            fornecedorNome);
+          /*insertLogIntegracao("Fornecedor com variável Ativo nulo, não será cadastrado: ", "Aviso", 
+            fornecedorNome);*/
         }
         String dataAtualizacao = jsonObject.get("data_atualizacao")
           .isJsonNull() ? null : jsonObject.get(

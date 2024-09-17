@@ -50,7 +50,7 @@ public class JobGetBaixa implements ScheduledAction {
 		 String matricula = "";
 		 
 		 int count = 0;
-
+		 System.out.println("Iniciou baixa carga empresa 3");
 		try {
 
 			jdbc.openSession();
@@ -73,13 +73,14 @@ public class JobGetBaixa implements ScheduledAction {
 			    token = rs.getString("TOKEN");
 			    matricula = rs.getString("MATRICULA");
 
-				efetuarBaixa(url, token, codEmp, matricula);
+			    iterarEndpoint(url, token, codEmp, matricula);
 				updateCarga(idCarga);
 			}
-			System.out.println("Chegou ao final da baixa");
-			if(count == 0){
+			System.out.println("Chegou ao final da baixa carga empresa 3");
+			
+			/*if(count == 0){
 				resetCarga(codEmp);
-			}
+			}*/
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -108,8 +109,68 @@ public class JobGetBaixa implements ScheduledAction {
 			jdbc.closeSession();
 		}
 	}
+	
+	public void iterarEndpoint(String url, String token, BigDecimal codEmp,
+			String matricula) throws Exception {
+		// int pagina = 1;
 
-	public void efetuarBaixa(String url, String token, BigDecimal codemp, String matricula) throws Exception {
+		Date dataAtual = new Date();
+
+		SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+
+		String dataFormatada = formato.format(dataAtual);
+
+		int paginaInicio = 1;
+		int paginaFim = 30;
+		/*
+		 * int paginaAtual = getPagina();
+		 * 
+		 * if(paginaAtual == 0){ paginaInicio = 1; paginaFim = 30; }else{
+		 * paginaInicio = paginaAtual; paginaFim = paginaAtual + 30; }
+		 */
+
+		try {
+			for (;;) {
+				//System.out.println("While de iteração");
+				
+				String[] response = apiGet(url + "/financeiro" + "/baixas"
+						// + "?quantidade=1"
+						// + "?dataInicial="+dataAtualFormatada+" 00:00:00"
+						+ "?matricula=" + matricula
+						+ "&pagina="+ paginaInicio
+						//+ "&vencimentoInicial=2024-08-04 00:00:00&vencimentoFinal=2024-08-05 23:59:59"
+						//+ "&dataInicial="+dataUmDiaFormatada+" 00:00:00&dataFinal="+dataAtualFormatada+" 23:59:59"
+						, token);
+
+				int status = Integer.parseInt(response[0]);
+
+				System.out.println("Status teste: " + status);
+				System.out.println("pagina: " + paginaInicio);
+
+				String responseString = response[1];
+				System.out.println("response string alunos: " + responseString);
+
+				if ((responseString.equals("[]"))
+						|| (paginaInicio == paginaFim)) {
+					
+					System.out.println("Entrou no if da quebra");
+					/*
+					 * if(responseString.equals("[]")){
+					 * insertUltPagina(paginaInicio); }else{
+					 * insertUltPagina(paginaFim); }
+					 */
+
+					break;
+				}
+				efetuarBaixa(response, url, token, codEmp, matricula);
+				paginaInicio++;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void efetuarBaixa(String[] response, String url, String token, BigDecimal codemp, String matricula) throws Exception {
 
 		System.out.println("Entrou no job baixa");
 		
@@ -202,13 +263,13 @@ public class JobGetBaixa implements ScheduledAction {
 				//String aluno = rs.getString("ID_EXTERNO");
 				String aluno = rs.getString("ID_EXTERNO");
 
-				String[] response = apiGet(url + "/financeiro" + "/baixas"
+				/*String[] response = apiGet(url + "/financeiro" + "/baixas"
 				// + "?quantidade=1"
 				// + "?dataInicial="+dataAtualFormatada+" 00:00:00"
 						+ "?matricula=" + aluno
 						//+ "&vencimentoInicial=2024-08-04 00:00:00&vencimentoFinal=2024-08-05 23:59:59"
 						+ "&dataInicial="+dataUmDiaFormatada+" 00:00:00&dataFinal="+dataAtualFormatada+" 23:59:59"
-						, token);
+						, token);*/
 
 				System.out.println("Teste: " + response[1]);
 
