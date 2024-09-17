@@ -195,7 +195,7 @@ public class JobGetBaixaMap implements ScheduledAction {
 				token = rs.getString("TOKEN");
 				matricula = rs.getString("MATRICULA");
 
-				efetuarBaixa(url, token, codEmp, matricula, mapaInfBanco,
+				iterarEndpoint(url, token, codEmp, matricula, mapaInfBanco,
 						mapaInfConta, mapaInfAlunos, mapaInfFinanceiro,
 						mapaInfTipoTitulo, mapaInfMenorDataMovBancariaPorConta,
 						mapaInfFinanceiroBaixado, mapaInfFinanceiroValor,
@@ -247,7 +247,77 @@ public class JobGetBaixaMap implements ScheduledAction {
 			jdbc.closeSession();
 		}
 	}
+	
+	public void iterarEndpoint(String url, String token, BigDecimal codemp,
+			String matricula, Map<String, BigDecimal> mapaInfBanco,
+			Map<String, BigDecimal> mapaInfConta,
+			Map<String, BigDecimal> mapaInfAlunos,
+			Map<String, BigDecimal> mapaInfFinanceiro,
+			Map<String, BigDecimal> mapaInfTipoTitulo,
+			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta,
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
+			long tempoAnterior) throws Exception {
+		// int pagina = 1;
 
+		Date dataAtual = new Date();
+
+		SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+
+		String dataFormatada = formato.format(dataAtual);
+
+		int paginaInicio = 1;
+		int paginaFim = 30;
+
+		try {
+			for (;;) {
+				//System.out.println("While de iteração");
+				
+				String[] response = apiGet(url + "/financeiro" + "/baixas"
+						// + "?quantidade=1"
+						// + "?dataInicial="+dataAtualFormatada+" 00:00:00"
+						+ "?matricula=" + matricula
+						+ "&pagina="+ paginaInicio
+						//+ "&vencimentoInicial=2024-08-04 00:00:00&vencimentoFinal=2024-08-05 23:59:59"
+						//+ "&dataInicial="+dataUmDiaFormatada+" 00:00:00&dataFinal="+dataAtualFormatada+" 23:59:59"
+						, token);
+
+				int status = Integer.parseInt(response[0]);
+
+				System.out.println("Status teste: " + status);
+				System.out.println("pagina: " + paginaInicio);
+
+				String responseString = response[1];
+				System.out.println("response string alunos: " + responseString);
+
+				if ((responseString.equals("[]"))
+						|| (paginaInicio == paginaFim)) {
+					
+					System.out.println("Entrou no if da quebra");
+					/*
+					 * if(responseString.equals("[]")){
+					 * insertUltPagina(paginaInicio); }else{
+					 * insertUltPagina(paginaFim); }
+					 */
+
+					break;
+				}
+				efetuarBaixa(url, 
+						token,codemp,matricula,
+						mapaInfBanco,mapaInfConta,
+						mapaInfAlunos,mapaInfFinanceiro,
+						mapaInfTipoTitulo,mapaInfMenorDataMovBancariaPorConta,
+						mapaInfFinanceiroBaixado,mapaInfFinanceiroValor,
+						mapaInfFinanceiroBanco,tempoAnterior);
+				
+				paginaInicio++;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public void efetuarBaixa(String url, String token, BigDecimal codemp,
 			String matricula, Map<String, BigDecimal> mapaInfBanco,
 			Map<String, BigDecimal> mapaInfConta,
