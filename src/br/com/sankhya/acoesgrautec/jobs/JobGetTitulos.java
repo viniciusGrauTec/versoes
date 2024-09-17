@@ -176,8 +176,8 @@ public class JobGetTitulos implements ScheduledAction {
 
 			jdbc.openSession();
 
-			//String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
+			String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+			//String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
 			String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
 
 			pstmt = jdbc.getPreparedStatement(query3);
@@ -187,14 +187,14 @@ public class JobGetTitulos implements ScheduledAction {
 			while (rs.next()) {
 				count++;
 				codEmp = rs.getBigDecimal("CODEMP");
-		        idCarga = rs.getBigDecimal("IDCARGA");
+		        //idCarga = rs.getBigDecimal("IDCARGA");
 		        
 		        url = rs.getString("URL");
 		        token = rs.getString("TOKEN");
-		        matricula = rs.getString("MATRICULA");
+		        //matricula = rs.getString("MATRICULA");
 
 		        iterarEndpoint(mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta, mapaInfBanco, mapaInfNatureza, mapaInfCenCus, mapaInfCenCusAluno, mapaInfAlunos, url, token, codEmp, matricula);
-				updateCarga(idCarga);
+				//updateCarga(idCarga);
 
 			}
 			
@@ -246,7 +246,7 @@ public class JobGetTitulos implements ScheduledAction {
 	      
 		  
 	    int paginaInicio = 1;
-	    int paginaFim = 30;
+	    int paginaFim = 2;
 	    /*int paginaAtual = getPagina();
 	    
 	    if(paginaAtual == 0){
@@ -259,20 +259,20 @@ public class JobGetTitulos implements ScheduledAction {
 	    
 	    try
 	    {
-	      for (;;)
-	      {
+	      //for (;;)
+	      //{
 	        System.out.println("While de iteração");
 	        
 	        String[] response = apiGet(url + "/financeiro" + "/titulos?"
 					// + "situacao=A"
-					// + "&quantidade=1"
+					 + "quantidade=0"
 					// + "&dataInicial=2023-04-19 00:00:00"
 					// + "&dataFinal=2023-10-24 00:00:00"
-					+ "matricula=" + matricula
-					+ "&pagina=" + paginaInicio
+					//+ "matricula=" + matricula
+					//+ "&pagina=" + paginaInicio
 					//+ "&vencimentoInicial=2024-08-05 00:00:00&vencimentoFinal=2024-08-08 23:59:59"
-					//+ "&dataInicial="+dataFormatada+" 00:00:00&dataFinal="+dataFormatada+" 23:59:59"
-					, token);
+					+"&dataInicial="+dataFormatada+" 00:00:00&dataFinal="+dataFormatada+" 23:59:59"
+					  ,token);
 	        
 	        int status = Integer.parseInt(response[0]);
 	        
@@ -282,21 +282,21 @@ public class JobGetTitulos implements ScheduledAction {
 	        String responseString = response[1];
 	        System.out.println("response string alunos: " + responseString);
 	        
-	        if ((responseString.equals("[]")) || (paginaInicio == paginaFim))
-	        {
-	          System.out.println("Entrou no if da quebra");
-	         /* if(responseString.equals("[]")){
-	        	  insertUltPagina(paginaInicio); 
-	          }else{
-	        	  insertUltPagina(paginaFim); 
-	          }*/
-	          
-	          break;
-	        }
+//	        if ((responseString.equals("[]")) || (paginaInicio == paginaFim))
+//	        {
+//	          System.out.println("Entrou no if da quebra");
+//	         /* if(responseString.equals("[]")){
+//	        	  insertUltPagina(paginaInicio); 
+//	          }else{
+//	        	  insertUltPagina(paginaFim); 
+//	          }*/
+//	          
+//	          break;
+//	        }
 	        cadastrarFinanceiro(mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta, mapaInfBanco, mapaInfNatureza, mapaInfCenCus, mapaInfCenCusAluno, mapaInfAlunos, response, url, token, codEmp, matricula);
-	        paginaInicio++;
+	        //paginaInicio++;
 	      }
-	    }
+	    //}
 	    catch (Exception e)
 	    {
 	      e.printStackTrace();
@@ -313,7 +313,7 @@ public class JobGetTitulos implements ScheduledAction {
 
 		System.out.println("Entrou no job");
 		
-		int count = 0;
+		//int count = 0;
 		
 		Date dataAtual = new Date();
 	      
@@ -346,7 +346,9 @@ public class JobGetTitulos implements ScheduledAction {
 					JsonParser parser = new JsonParser();
 					JsonArray jsonArray = parser.parse(responseString)
 							.getAsJsonArray();
-
+					int count = 0;
+					int total = jsonArray.size();
+					
 					for (JsonElement jsonElement : jsonArray) {
 						JsonObject jsonObject = jsonElement.getAsJsonObject();
 						
@@ -423,21 +425,24 @@ public class JobGetTitulos implements ScheduledAction {
 										}*/
 										if(!recDesp.isEmpty() && recDesp != null){
 											
-											consulta.append("SELECT 'NUFIN', NULL, 0, 'F', "+recDesp+", "+codemp+" , "+codCenCus+" , "+mapaInfNatureza.get(taxaId)+" ,  "+BigDecimal.valueOf(1300)+" ,  (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = "+BigDecimal.valueOf(1300)+"), 0, (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), "+codparc+" , "+BigDecimal.valueOf(4)+" , "+vlrDesdob+" , 0, 0, "+codBanco+", "+codConta+", '"+dtPedido+"' , SYSDATE, SYSDATE, '"+dataVencFormatada+"', SYSDATE, '"+dataVencFormatada+"' , 1 , 1 , null , 'I' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'S' , 'S' , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '"+idFin+"', '"+idAluno+"' FROM DUAL");
-											consulta.append("\nUNION ALL");
+											consulta.append(" SELECT 'NUFIN', NULL, 0, 'F', "+recDesp+", "+codemp+" , "+codCenCus+" , "+mapaInfNatureza.get(taxaId)+" ,  "+BigDecimal.valueOf(1300)+" ,  (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = "+BigDecimal.valueOf(1300)+"), 0, (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), "+codparc+" , "+BigDecimal.valueOf(4)+" , "+vlrDesdob+" , 0, 0, "+codBanco+", "+codConta+", '"+dtPedido+"' , SYSDATE, SYSDATE, '"+dataVencFormatada+"', SYSDATE, '"+dataVencFormatada+"' , 1 , 1 , null , 'I' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'S' , 'S' , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '"+idFin+"', '"+idAluno+"' FROM DUAL");
 											
-											BigDecimal nufin = insertFin(codemp, /* codemp */
-													codCenCus, /* codCenCus */
-													mapaInfNatureza.get(taxaId), /* codNat */
-													BigDecimal.valueOf(1300), /* codTipOper */
-													codparc, /* codparc */
-													BigDecimal.valueOf(4), /* codtiptit */
-													vlrDesdob, /* vlrDesdob */
-													dataVencFormatada, /* dtvenc */
-													// "25/11/2023", /* dtvenc */
-													dtPedido, /* dtPedido */
-													// "22/11/2023", /* dtPedido */
-													idFin, idAluno, codConta, codBanco, recDesp);
+											if (count < total - 1) {
+										        consulta.append("\nUNION ALL");
+										    }
+											
+//											BigDecimal nufin = insertFin(codemp, /* codemp */
+//													codCenCus, /* codCenCus */
+//													mapaInfNatureza.get(taxaId), /* codNat */
+//													BigDecimal.valueOf(1300), /* codTipOper */
+//													codparc, /* codparc */
+//													BigDecimal.valueOf(4), /* codtiptit */
+//													vlrDesdob, /* vlrDesdob */
+//													dataVencFormatada, /* dtvenc */
+//													// "25/11/2023", /* dtvenc */
+//													dtPedido, /* dtPedido */
+//													// "22/11/2023", /* dtPedido */
+//													idFin, idAluno, codConta, codBanco, recDesp);
 											
 											System.out.println("Financeiro cadastrado");
 										}else{
@@ -463,7 +468,11 @@ public class JobGetTitulos implements ScheduledAction {
 							}
 							
 						}
+						
+						count++;
 					}
+					
+					System.out.println("Consulta: " + consulta);
 					
 					//updateFlagAlunoIntegrado(aluno);
 					
@@ -1614,7 +1623,7 @@ public class JobGetTitulos implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "SELECT CODEMP, NUFIN, AD_IDEXTERNO, FROM TGFFIN WHERE AD_IDEXTERNO IS NOT NULL AND AD_IDALUNO IS NOT NULL";
+			String sql = "SELECT CODEMP, NUFIN, AD_IDEXTERNO FROM TGFFIN WHERE AD_IDEXTERNO IS NOT NULL AND AD_IDALUNO IS NOT NULL";
 			
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
