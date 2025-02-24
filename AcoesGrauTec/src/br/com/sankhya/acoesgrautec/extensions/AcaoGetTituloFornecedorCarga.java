@@ -867,7 +867,7 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 	}
 	
 	public void leituraJSON(String tipoEmpresa,
-			Map<String, BigDecimal> mapaInfNaturezaEmp,
+			Map<String, BigDecimal> mapaInfNaturezaEmp,      //870
 			Map<String, BigDecimal> mapaInfCenCusEmp,
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
 			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
@@ -919,7 +919,7 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 				int total = jsonArray.size();
 				int qtdInsert = 0;
 
-				List<String> selectsParaInsert = new ArrayList<String>();
+				List<String> selectsParaInsert = new ArrayList<String>();   //922
 
 				for (JsonElement jsonElement : jsonArray) {
 					System.out.println("comecou a leitura do JSON");
