@@ -55,7 +55,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		String dataInicio = contexto.getParam("DTINICIO").toString().substring(0, 10);
 		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
 		
-		String matricula = (String) contexto.getParam("MATRICULA");
+		String matricula = (String) contexto.getParam("Matricula");
 		
 		try {
 
@@ -1439,6 +1439,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 	    System.out.println("\n=== DEBUG INSERT ALUNO ===");
 	    System.out.println("turmaId: " + turmaId);
+	    System.out.println("descrCurso original: " + descrCurso);
 
 	    if (credotAtual == null) {
 	        throw new IllegalArgumentException("credotAtual não pode ser nulo");
@@ -1452,6 +1453,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 	    PreparedStatement pstmt = null;
 	    PreparedStatement verifyStmt = null;
+	    ResultSet rs = null;
+	    BigDecimal codCenCus = null;
 
 	    EnviromentUtils util = new EnviromentUtils();
 
@@ -1462,17 +1465,88 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    try {
 	        jdbc.openSession();
 
-	        // Verifica se existe o curso
-	        String verifyQuery = "select codcencus from tsicus where TRANSLATE(upper(descrcencus), '????????????????????????????????????', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') like TRANSLATE(upper(?), '????????????????????????????????????', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')";
+	        // Abordagem mais simples usando UPPER e removendo acentos
+	        String verifyQuery = "SELECT codcencus, descrcencus FROM tsicus";
 	        verifyStmt = jdbc.getPreparedStatement(verifyQuery);
-	        verifyStmt.setString(1, descrCurso);
-	        ResultSet rs = verifyStmt.executeQuery();
-	        if (!rs.next()) {
-	            throw new SQLException("Nenhum curso encontrado para a descrição: " + descrCurso);
+	        rs = verifyStmt.executeQuery();
+	        
+	        // Normaliza o nome do curso (remove acentos, maiúsculas e espaços extras)
+	        String normalizedDescrCurso = descrCurso
+	            .toUpperCase()
+	            .replaceAll("\\s+", " ")
+	            .trim()
+	            .replace("Á", "A")
+	            .replace("À", "A")
+	            .replace("Ã", "A")
+	            .replace("Â", "A")
+	            .replace("É", "E")
+	            .replace("Ê", "E")
+	            .replace("Í", "I")
+	            .replace("Ó", "O")
+	            .replace("Ô", "O")
+	            .replace("Õ", "O")
+	            .replace("Ú", "U")
+	            .replace("Ç", "C");
+	            
+	        System.out.println("[DEBUG] descrCurso normalizado: " + normalizedDescrCurso);
+	        
+	        boolean cursoEncontrado = false;
+	        System.out.println("[DEBUG] Buscando curso no banco. Cursos disponíveis:");
+	        
+	        while (rs.next()) {
+	            String descricaoBanco = rs.getString("descrcencus");
+	            String descricaoBancoNormalizada = descricaoBanco
+	                .toUpperCase()
+	                .replaceAll("\\s+", " ")
+	                .trim()
+	                .replace("Á", "A")
+	                .replace("À", "A")
+	                .replace("Ã", "A")
+	                .replace("Â", "A")
+	                .replace("É", "E")
+	                .replace("Ê", "E")
+	                .replace("Í", "I")
+	                .replace("Ó", "O")
+	                .replace("Ô", "O")
+	                .replace("Õ", "O")
+	                .replace("Ú", "U")
+	                .replace("Ç", "C");
+	                
+	            System.out.println(" - Original: [" + descricaoBanco + "] Normalizado: [" + descricaoBancoNormalizada + "]");
+	            
+	            if (normalizedDescrCurso.equals(descricaoBancoNormalizada)) {
+	                codCenCus = rs.getBigDecimal("codcencus");
+	                System.out.println("[DEBUG] Curso encontrado! Código: " + codCenCus + " para: [" + descricaoBanco + "]");
+	                cursoEncontrado = true;
+	                break;
+	            }
+	        }
+	        
+	        if (!cursoEncontrado) {
+	            // Tentar uma busca menos restritiva
+	            rs.close();
+	            verifyStmt.close();
+	            
+	            verifyQuery = "SELECT codcencus, descrcencus FROM tsicus WHERE UPPER(descrcencus) LIKE ?";
+	            verifyStmt = jdbc.getPreparedStatement(verifyQuery);
+	            verifyStmt.setString(1, "%" + normalizedDescrCurso.replace("CURSO TECNICO EM", "%") + "%");
+	            rs = verifyStmt.executeQuery();
+	            
+	            System.out.println("[DEBUG] Fazendo busca menos restritiva com: " + 
+	                normalizedDescrCurso.replace("CURSO TECNICO EM", "%"));
+	            
+	            if (rs.next()) {
+	                codCenCus = rs.getBigDecimal("codcencus");
+	                System.out.println("[DEBUG] Curso encontrado na busca menos restritiva! Código: " + 
+	                    codCenCus + " para: [" + rs.getString("descrcencus") + "]");
+	                cursoEncontrado = true;
+	            } else {
+	                throw new SQLException("Nenhum curso encontrado para a descrição: " + descrCurso);
+	            }
 	        }
 
-	        String sqlP = "INSERT INTO AD_ALUNOS ( CODPARC, ID_EXTERNO, NOME, NOME_SOCIAL, ENDERECO, CEP, BAIRRO, CIDADE, UF, SEXO, DATA_NASCIMENTO, RG, CPF, TELEFONE_CELULAR, TELEFONE_RESIDENCIAL, EMAIL, SITUACAO, SITUACAO_ID, CODEMP, CODCENCUS, TURMA ) "
-	                + "\tVALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?, ?, ?, ?, (select codcencus from tsicus where TRANSLATE(upper(descrcencus), '????????????????????????????????????', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') like TRANSLATE(upper('"+descrCurso+"'), '????????????????????????????????????', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')), ?)";
+	        String sqlP = "INSERT INTO AD_ALUNOS (CODPARC, ID_EXTERNO, NOME, NOME_SOCIAL, ENDERECO, CEP, BAIRRO, CIDADE, UF, SEXO, DATA_NASCIMENTO, RG, CPF, TELEFONE_CELULAR, TELEFONE_RESIDENCIAL, EMAIL, SITUACAO, SITUACAO_ID, CODEMP, CODCENCUS, TURMA) "
+	                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	        System.out.println("[DEBUG] Query SQL: " + sqlP);
 	        System.out.println("[DEBUG] Valor de turmaId antes do INSERT: " + turmaId);
@@ -1498,7 +1572,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        pstmt.setString(17, alunoSituacao);
 	        pstmt.setString(18, alunoSituacaoId);
 	        pstmt.setBigDecimal(19, codEmp);
-	        pstmt.setString(20, turmaId);
+	        pstmt.setBigDecimal(20, codCenCus); // Usa o código do curso obtido na verificação
+	        pstmt.setString(21, turmaId);
 
 	        int rowsAffected = pstmt.executeUpdate();
 
@@ -1517,6 +1592,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        e.printStackTrace();
 	        throw e;
 	    } finally {
+	        if (rs != null) {
+	            rs.close();
+	        }
 	        if (verifyStmt != null) {
 	            verifyStmt.close();
 	        }

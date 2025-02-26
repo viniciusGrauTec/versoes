@@ -66,7 +66,7 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 		String dataInicio = contexto.getParam("DTINICIO").toString().substring(0, 10);
 		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
 		String tituloAberto = (String) contexto.getParam("TITABERTO");
-		String matricula = (String) contexto.getParam("MATRICULA");
+		String matricula = (String) contexto.getParam("Matricula");
 		
 		try {
 
@@ -1120,7 +1120,7 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 
 				System.out.println("Consulta Antes tratamento: " + consulta);
 
-				// Apenas se encontrar registro eleg�vel
+				// Apenas se encontrar registro elegivel
 				if (qtdInsert > 0) {
 					// Capturar o tgfnum
 					BigDecimal nuFinInicial = util.getMaxNumFin(false);
