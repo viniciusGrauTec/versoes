@@ -171,41 +171,45 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			List<Object[]> listInfTipoTitulo = this.retornarInformacoesTipoTitulo();
 			Map<String, BigDecimal> mapaInfTipoTitulo = new HashMap();
 
+			
+			//QTDPARCELAS
+			// First map - mapaInfTipoTitulo
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal codTipTit = (BigDecimal) obj[0];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas, codTipTit);
-				}
+			    BigDecimal codTipTit = (BigDecimal) obj[0];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // Removed qtdParcelas from the key
+			    if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj, codTipTit);
+			    }
 			}
 
 			Map<String, BigDecimal> mapaInfTipoTituloTaxa = new HashMap();
 
+			// Second map - mapaInfTipoTituloTaxa
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal taxa = (BigDecimal) obj[3];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTituloTaxa.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTituloTaxa.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas, taxa);
-				}
+			    BigDecimal taxa = (BigDecimal) obj[3];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // Removed qtdParcelas from the key
+			    if (mapaInfTipoTituloTaxa.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTituloTaxa.put(codEmpObj + "###" + idExternoObj, taxa);
+			    }
 			}
 
 			Map<String, BigDecimal> mapaInfTipoTituloCodparcCartao = new HashMap();
 
+			// Third map - mapaInfTipoTituloCodparcCartao
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal codParcCartao = (BigDecimal) obj[5];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTituloCodparcCartao
-						.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTituloCodparcCartao.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas,
-							codParcCartao);
-				}
+			    BigDecimal codParcCartao = (BigDecimal) obj[5];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // Removed qtdParcelas from the key
+			    if (mapaInfTipoTituloCodparcCartao.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTituloCodparcCartao.put(codEmpObj + "###" + idExternoObj, codParcCartao);
+			    }
 			}
+			//QTDPARCELAS
 
 			List<Object[]> listInfMenorDataMovBancariaPorConta = this.retornarInformacoesMenorDataMovBancariaPorConta();
 			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta = new HashMap();
@@ -384,41 +388,42 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			List<Object[]> listInfTipoTitulo = this.retornarInformacoesTipoTitulo();
 			Map<String, BigDecimal> mapaInfTipoTitulo = new HashMap();
 
+			//QT PARCELAS
+			// Para o primeiro mapa
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal codTipTit = (BigDecimal) obj[0];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas, codTipTit);
-				}
+			    BigDecimal codTipTit = (BigDecimal) obj[0];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // BigDecimal qtdParcelas = (BigDecimal) obj[4]; // Comentado
+			    if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj, codTipTit);
+			    }
 			}
 
 			Map<String, BigDecimal> mapaInfTipoTituloTaxa = new HashMap();
 
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal taxa = (BigDecimal) obj[3];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTituloTaxa.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTituloTaxa.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas, taxa);
-				}
+			    BigDecimal taxa = (BigDecimal) obj[3];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // BigDecimal qtdParcelas = (BigDecimal) obj[4]; // Comentado
+			    if (mapaInfTipoTituloTaxa.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTituloTaxa.put(codEmpObj + "###" + idExternoObj, taxa);
+			    }
 			}
 
 			Map<String, BigDecimal> mapaInfTipoTituloCodparcCartao = new HashMap();
 
 			for (Object[] obj : listInfTipoTitulo) {
-				BigDecimal codParcCartao = (BigDecimal) obj[5];
-				Long codEmpObj = (Long) obj[1];
-				String idExternoObj = (String) obj[2];
-				BigDecimal qtdParcelas = (BigDecimal) obj[4];
-				if (mapaInfTipoTituloCodparcCartao
-						.get(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas) == null) {
-					mapaInfTipoTituloCodparcCartao.put(codEmpObj + "###" + idExternoObj + "###" + qtdParcelas,
-							codParcCartao);
-				}
+			    BigDecimal codParcCartao = (BigDecimal) obj[5];
+			    Long codEmpObj = (Long) obj[1];
+			    String idExternoObj = (String) obj[2];
+			    // BigDecimal qtdParcelas = (BigDecimal) obj[4]; // Comentado
+			    if (mapaInfTipoTituloCodparcCartao.get(codEmpObj + "###" + idExternoObj) == null) {
+			        mapaInfTipoTituloCodparcCartao.put(codEmpObj + "###" + idExternoObj, codParcCartao);
+			    }
 			}
+			//QT PARCELAS
 
 			List<Object[]> listInfMenorDataMovBancariaPorConta = this.retornarInformacoesMenorDataMovBancariaPorConta();
 			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta = new HashMap();
@@ -758,21 +763,32 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 								formaDePagamento = formas_de_pagamentoObject.get("forma_pagamento_id").getAsString()
 										.trim();
 								
-								BigDecimal qtdParcelas = (BigDecimal) Optional
-										.ofNullable(jsonObject.get("forma_pagamento_qtdparcelas"))
-										.filter((element) -> !element.isJsonNull()).map(JsonElement::getAsString)
-										.map(BigDecimal::new).orElse(BigDecimal.ZERO);
+								//qtdParcelas
+//								BigDecimal qtdParcelas = (BigDecimal) Optional
+//										.ofNullable(jsonObject.get("forma_pagamento_qtdparcelas"))
+//										.filter((element) -> !element.isJsonNull()).map(JsonElement::getAsString)
+//										.map(BigDecimal::new).orElse(BigDecimal.ZERO);
+								
+								
+								
+								//modificado
 								codTipTit = (BigDecimal) Optional
-										.ofNullable((BigDecimal) mapaInfTipoTitulo
-												.get(codemp + "###" + formaDePagamento + "###" + qtdParcelas))
-										.orElse(BigDecimal.ZERO);
+								        .ofNullable((BigDecimal) mapaInfTipoTitulo
+								                .get(codemp + "###" + formaDePagamento))
+								        .orElse(BigDecimal.ZERO);
 								
 								System.out.println("Tipo de titulo: " + codTipTit);
+								
+								//modificado
 								taxaCartao = (BigDecimal) Optional
-										.ofNullable((BigDecimal) mapaInfTipoTituloTaxa
-												.get(codemp + "###" + formaDePagamento + "###" + qtdParcelas))
-										.orElse(BigDecimal.ZERO);
+								        .ofNullable((BigDecimal) mapaInfTipoTituloTaxa
+								                .get(codemp + "###" + formaDePagamento)) // removed "###" + qtdParcelas
+								        .orElse(BigDecimal.ZERO);
 								System.out.println("Taxa Cartão: " + taxaCartao);
+								
+								
+								
+								
 								nsu_Cartao = (String) Optional.ofNullable(jsonObject.get("forma_pagamento_nsu"))
 										.filter((element) -> !element.isJsonNull()).map(JsonElement::getAsString)
 										.orElse("");
@@ -780,10 +796,12 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 										.ofNullable(jsonObject.get("forma_pagamento_autorizacao"))
 										.filter((element) -> !element.isJsonNull()).map(JsonElement::getAsString)
 										.orElse("");
+								
+								//modificado
 								codParcCartao = (BigDecimal) Optional
-										.ofNullable((BigDecimal) mapaInfTipoTituloCodparcCartao
-												.get(codemp + "###" + formaDePagamento + "###" + qtdParcelas))
-										.orElse(BigDecimal.ZERO);
+								        .ofNullable((BigDecimal) mapaInfTipoTituloCodparcCartao
+								                .get(codemp + "###" + formaDePagamento)) // removed "###" + qtdParcelas
+								        .orElse(BigDecimal.ZERO);
 								dtCredito = (String) Optional.ofNullable(jsonObject.get("forma_pagamento_data_credito"))
 										.filter((element) -> !element.isJsonNull()).map(JsonElement::getAsString)
 										.orElse("");
@@ -819,7 +837,9 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 										if (vlrBaixa.compareTo((BigDecimal) mapaInfFinanceiroValor.get(nufin)) != 0
 												|| nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
 											if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
-												this.updateFinCartao(codTipTit, nufin, codBanco, codConta, vlrBaixa, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos, baixaId, codemp, codParcCartao, dtCredito, nsu_Cartao, autorizacao);      //codParcCartao
+												
+												//modificacao aqui
+												this.updateFinCartao(codTipTit, nufin, codBanco, codConta, vlrBaixa, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos, baixaId, codemp, codParc, dtCredito, nsu_Cartao, autorizacao);
 											} else {
 												System.out.println("Entrou no else do valor");
 												this.updateFinComVlrBaixa(codTipTit, nufin, codBanco, codConta,
@@ -901,8 +921,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 							int countBaixa = 0;
 
 							for (JsonElement formas_de_pagamentoElement : formas_de_pagamento) {
-								JsonObject formas_de_pagamentoObject = formas_de_pagamentoElement.getAsJsonObject();   //não entra nesse laço
-
+								JsonObject formas_de_pagamentoObject = formas_de_pagamentoElement.getAsJsonObject();  
 								System.out.println("Forma de pagamento: "
 										+ formas_de_pagamentoObject.get("forma_pagamento_id").getAsString());
 								System.out.println("codemp: " + codemp);
@@ -974,7 +993,8 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 															(BigDecimal) mapaInfFinanceiroValor.get(nufin)) != 0
 															|| nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
 														if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
-															this.updateFinCartao(codTipTit, nufin, codBanco, codConta, vlrBaixa, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos, baixaId, codemp, codParcCartao, dtCredito, nsu_Cartao, autorizacao);
+															//substituido por
+															this.updateFinCartao(codTipTit, nufin, codBanco, codConta, vlrBaixa, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos, baixaId, codemp, codParc, dtCredito, nsu_Cartao, autorizacao);
 														} else {
 															System.out.println("Entrou no else do valor");
 															this.updateFinComVlrBaixa(codTipTit, nufin, codBanco,
@@ -1025,17 +1045,20 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 																	&& !baixaIdAtual.equalsIgnoreCase(baixaId)) {
 														System.out.println("Baixa Dupla");
 														if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
+															
+															
+															/*
 															BigDecimal qtdParcelasAtuais = (BigDecimal) Optional
-																	.ofNullable((BigDecimal) mapaInfIdBaixaParcelas
-																			.get(baixaId + "###" + codemp))
-																	.orElse(BigDecimal.ZERO);
-															System.out.println(
-																	"Parcelas do sistema: " + qtdParcelasAtuais);
-															if (qtdParcelas.compareTo(qtdParcelasAtuais) != 0) {
-																this.insertFinCartao(nufin, vlrBaixa, codTipTit, codemp,
-																		dtCredito, baixaId);
-																++countBaixa;
-															}
+															        .ofNullable((BigDecimal) mapaInfIdBaixaParcelas
+															                .get(baixaId + "###" + codemp))
+															        .orElse(BigDecimal.ZERO);
+															System.out.println("Parcelas do sistema: " + qtdParcelasAtuais);
+															*/
+															// Agora sem a condição, sempre executa
+															this.insertFinCartao(nufin, vlrBaixa, codTipTit, codemp, codParc, dtCredito, baixaId);
+														    ++countBaixa;
+															
+															
 														} else {
 															BigDecimal nufinDup = this.insertFin(nufin, vlrBaixa, codTipTit, codemp);
 															this.updateFinComVlrBaixa(codTipTit, nufinDup, codBanco,
@@ -1078,7 +1101,8 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 										&& countBaixa > 0) {
 									System.out.println("contagem 2");
 									if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
-										this.insertFinCartao(nufin, vlrBaixa, codTipTit, codemp, dtCredito, baixaId);
+										//modifcacao
+										this.insertFinCartao(nufin, vlrBaixa, codTipTit, codemp, codParc, dtCredito, baixaId);
 									} else {
 										BigDecimal nufinDup = this.insertFin(nufin, vlrBaixa, codTipTit, codemp);
 										nubco = this.insertMovBancaria(codConta, vlrBaixa, nufinDup, dataBaixaFormatada,
@@ -1100,7 +1124,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 						}
 					} else {
 						this.selectsParaInsert
-								.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" Configurado para o local de pagamento: "
+								.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" Configurado para o local de pagamento: "          //erro aqui
 										+ idExterno + "' , SYSDATE, 'Aviso', " + codemp + ", '' FROM DUAL");
 					}
 				}
@@ -1323,33 +1347,35 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 	}
 	
 	
-	public void updateFinCartao(BigDecimal codtiptit, BigDecimal nufin, BigDecimal codBanco, BigDecimal codConta, BigDecimal vlrBaixa, BigDecimal vlrDesconto, BigDecimal vlrJuros, BigDecimal vlrMulta, BigDecimal vlrOutrosAcrescimos, String baixaId, BigDecimal codemp, BigDecimal codParcCartao, String dtCredito, String nsu, String autorizacao) throws Exception {
-        EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-        JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-        PreparedStatement pstmt = null;
+	public void updateFinCartao(BigDecimal codTipTit, BigDecimal nufin, BigDecimal codBanco, BigDecimal codConta, 
+	        BigDecimal vlrBaixa, BigDecimal vlrDesconto, BigDecimal vlrJuros, BigDecimal vlrMulta, 
+	        BigDecimal vlrOutrosAcrescimos, String baixaId, BigDecimal codemp, 
+	        BigDecimal codParc, String dtCredito, String nsu_Cartao, String autorizacao) throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
 
-        try {
-            jdbc.openSession();
-            String sqlNota = "UPDATE TGFFIN SET CODTIPTIT = ?, CODBCO = ?, CODCTABCOINT = ?, AD_VLRDESCINT = " + vlrDesconto + ", " + "VLRINSS = 0, " + "VLRIRF = 0, " + "VLRISS = 0, " + "AD_VLRJUROSINT = " + vlrJuros + ", " + "AD_VLRMULTAINT = " + vlrMulta + ", " + "TIPJURO = null, AD_VLRORIG = VLRDESDOB, " + "VLRDESDOB = " + vlrBaixa + ", " + "TIPMULTA = null, AD_OUTACRESCIMOS = " + vlrOutrosAcrescimos + ", " + "AD_BAIXAID = " + baixaId + ", CODPARC = " + codParcCartao + ", " + "AD_BAIXA_CARTAO = 'S', DTVENC = TO_DATE('" + dtCredito + "', 'YYYY-MM-DD')," + "AD_NSU_CART = '" + nsu + "', AD_AUTORIZACAO_CART = '" + autorizacao + "' WHERE nufin = ?";
-            pstmt = jdbc.getPreparedStatement(sqlNota);
-            pstmt.setBigDecimal(1, codtiptit);
-            pstmt.setBigDecimal(2, codBanco);
-            pstmt.setBigDecimal(3, codConta);
-            pstmt.setBigDecimal(4, nufin);
-            pstmt.executeUpdate();
-            System.out.println("Passou do update");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa de Cartão: " + e.getMessage() + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
-        } finally {
-            if (pstmt != null) {
-                pstmt.close();
-            }
+	    try {
+	        jdbc.openSession();
+	        String sqlNota = "UPDATE TGFFIN SET CODTIPTIT = ?, CODBCO = ?, CODCTABCOINT = ?, AD_VLRDESCINT = " + vlrDesconto + ", " + "VLRINSS = 0, " + "VLRIRF = 0, " + "VLRISS = 0, " + "AD_VLRJUROSINT = " + vlrJuros + ", " + "AD_VLRMULTAINT = " + vlrMulta + ", " + "TIPJURO = null, AD_VLRORIG = VLRDESDOB, " + "VLRDESDOB = " + vlrBaixa + ", " + "TIPMULTA = null, AD_OUTACRESCIMOS = " + vlrOutrosAcrescimos + ", " + "AD_BAIXAID = " + baixaId + ", CODPARC = " + codParc + ", " + "AD_BAIXA_CARTAO = 'S', DTVENC = TO_DATE('" + dtCredito + "', 'YYYY-MM-DD')," + "AD_NSU_CART = '" + nsu_Cartao + "', AD_AUTORIZACAO_CART = '" + autorizacao + "' WHERE nufin = ?";
+	        pstmt = jdbc.getPreparedStatement(sqlNota);
+	        pstmt.setBigDecimal(1, codTipTit); // Corrigido de codtiptit para codTipTit
+	        pstmt.setBigDecimal(2, codBanco);
+	        pstmt.setBigDecimal(3, codConta);
+	        pstmt.setBigDecimal(4, nufin);
+	        pstmt.executeUpdate();
+	        System.out.println("Passou do update");
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa de Cartão: " + e.getMessage() + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+	    } finally {
+	        if (pstmt != null) {
+	            pstmt.close();
+	        }
 
-            jdbc.closeSession();
-        }
-
-    }
+	        jdbc.closeSession();
+	    }
+	}
 	
 	
 
@@ -1762,7 +1788,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 		return listRet;
 	}
 
-	//TIPO TITULO 
+	//TIPO TITULO
 	public List<Object[]> retornarInformacoesTipoTitulo() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1903,47 +1929,46 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 
 
 
-	public BigDecimal insertFinCartao(BigDecimal nufinOrig, BigDecimal vlrDesdob, BigDecimal codTipTit,
-			BigDecimal codemp, String dtCredito, String baixaId) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		EnviromentUtils util = new EnviromentUtils();
-		System.out.println("Chegou no insert do financeiro cartão");
-		BigDecimal nufin = util.getMaxNumFin(true);
+	   public BigDecimal insertFinCartao(BigDecimal nufinOrig, BigDecimal vlrDesdob, BigDecimal codTipTit, BigDecimal codemp,
+	           BigDecimal codParc, String dtCredito, String baixaId) throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
+	    EnviromentUtils util = new EnviromentUtils();
+	    System.out.println("Chegou no insert do financeiro cartão");
+	    BigDecimal nufinNovo = util.getMaxNumFin(true); // Alterado o nome da variável para evitar conflito
 
-		try {
-			jdbc.openSession();
-			String sqlUpdate = "INSERT INTO TGFFIN         (NUFIN,          NUNOTA,          NUMNOTA,          ORIGEM,          RECDESP,          CODEMP,          CODCENCUS,          CODNAT,          CODTIPOPER,          DHTIPOPER,          CODTIPOPERBAIXA,          DHTIPOPERBAIXA,          CODPARC,          CODTIPTIT,          VLRDESDOB,          VLRDESC,          VLRBAIXA,          CODBCO,          CODCTABCOINT,          DTNEG,          DHMOV,          DTALTER,          DTVENC,          DTPRAZO,          DTVENCINIC,          TIPJURO,          TIPMULTA,          HISTORICO,          TIPMARCCHEQ,          AUTORIZADO,          BLOQVAR,          INSSRETIDO,          ISSRETIDO,          PROVISAO,          RATEADO,          TIMBLOQUEADA,          IRFRETIDO,          TIMTXADMGERALU,          VLRDESCEMBUT,          VLRINSS,          VLRIRF,          VLRISS,          VLRJURO,          VLRJUROEMBUT,          VLRJUROLIB,          VLRJURONEGOC,          VLRMOEDA,          VLRMOEDABAIXA,          VLRMULTA,          VLRMULTAEMBUT,          VLRMULTALIB,          VLRMULTANEGOC,          VLRPROV,          VLRVARCAMBIAL,          VLRVENDOR,          ALIQICMS,          BASEICMS,          CARTAODESC,          CODMOEDA,          CODPROJ,          CODVEICULO,          CODVEND,          DESPCART,          NUMCONTRATO,          ORDEMCARGA,          CODUSU,         AD_IDEXTERNO,         AD_IDALUNO, AD_NUFINORIG, AD_BAIXAPARCIAL, AD_BAIXA_CARTAO, AD_BAIXAID, AD_AUTORIZACAO_CART, AD_NSU_CART)          (SELECT "
-				+ nufin
-					+ ", NULL, 0, 'F', recDesp ,codemp ,codCenCus ,codNat ,codTipOper ,(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = TGFFIN.codTipOper), 0, (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), codparc ,"
-					+ codTipTit + ", " + vlrDesdob + ", 0, 0, CODBCO, CODCTABCOINT, DTNEG , SYSDATE, SYSDATE, TO_DATE('"
-					+ dtCredito
-					+ "', 'YYYY-MM-DD'), SYSDATE, DTVENCINIC , 1 , 1 , null , 'I' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'S' , 'S' , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, AD_IDALUNO, "
-					+ nufinOrig + ", 'S', 'S', '" + baixaId
-					+ "', AD_AUTORIZACAO_CART, AD_NSU_CART FROM TGFFIN WHERE NUFIN = " + nufinOrig + ")";
-			pstmt = jdbc.getPreparedStatement(sqlUpdate);
-			pstmt.executeUpdate();
-		} catch (Exception se) {
-			se.printStackTrace();
-			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Gerar Titulo Parcial: " + se.getMessage()
-					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
-		} finally {
-			try {
-				if (pstmt != null) {
-					pstmt.close();
-				}
+	    try {
+	        jdbc.openSession();
+	        String sqlUpdate = "INSERT INTO TGFFIN (NUFIN, NUNOTA, NUMNOTA, ORIGEM, RECDESP, CODEMP, CODCENCUS, CODNAT, CODTIPOPER, DHTIPOPER, CODTIPOPERBAIXA, DHTIPOPERBAIXA, CODPARC, CODTIPTIT, VLRDESDOB, VLRDESC, VLRBAIXA, CODBCO, CODCTABCOINT, DTNEG, DHMOV, DTALTER, DTVENC, DTPRAZO, DTVENCINIC, TIPJURO, TIPMULTA, HISTORICO, TIPMARCCHEQ, AUTORIZADO, BLOQVAR, INSSRETIDO, ISSRETIDO, PROVISAO, RATEADO, TIMBLOQUEADA, IRFRETIDO, TIMTXADMGERALU, VLRDESCEMBUT, VLRINSS, VLRIRF, VLRISS, VLRJURO, VLRJUROEMBUT, VLRJUROLIB, VLRJURONEGOC, VLRMOEDA, VLRMOEDABAIXA, VLRMULTA, VLRMULTAEMBUT, VLRMULTALIB, VLRMULTANEGOC, VLRPROV, VLRVARCAMBIAL, VLRVENDOR, ALIQICMS, BASEICMS, CARTAODESC, CODMOEDA, CODPROJ, CODVEICULO, CODVEND, DESPCART, NUMCONTRATO, ORDEMCARGA, CODUSU, AD_IDEXTERNO, AD_IDALUNO, AD_NUFINORIG, AD_BAIXAPARCIAL, AD_BAIXA_CARTAO, AD_BAIXAID, AD_AUTORIZACAO_CART, AD_NSU_CART) " +
+	                "(SELECT " + nufinNovo + ", NULL, 0, 'F', recDesp, codemp, codCenCus, codNat, codTipOper, " +
+	                "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = TGFFIN.codTipOper), 0, " +
+	                "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), " + codParc + ", " + // Substituído codparc por codParc
+	                codTipTit + ", " + vlrDesdob + ", 0, 0, CODBCO, CODCTABCOINT, DTNEG, SYSDATE, SYSDATE, TO_DATE('" +
+	                dtCredito + "', 'YYYY-MM-DD'), SYSDATE, DTVENCINIC, 1, 1, null, 'I', 'N', 'N', 'N', 'N', 'N', 'N', 'N', " +
+	                "'S', 'S', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, NULL, AD_IDALUNO, " +
+	                nufinOrig + ", 'S', 'S', '" + baixaId + "', AD_AUTORIZACAO_CART, AD_NSU_CART FROM TGFFIN WHERE NUFIN = " + nufinOrig + ")";
+	        pstmt = jdbc.getPreparedStatement(sqlUpdate);
+	        pstmt.executeUpdate();
+	    } catch (Exception se) {
+	        se.printStackTrace();
+	        this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Gerar Titulo Parcial: " + se.getMessage() +
+	                "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+	    } finally {
+	        try {
+	            if (pstmt != null) {
+	                pstmt.close();
+	            }
 
-				if (jdbc != null) {
-					jdbc.closeSession();
-				}
-			} catch (Exception se) {
-				se.printStackTrace();
-			}
+	            if (jdbc != null) {
+	                jdbc.closeSession();
+	            }
+	        } catch (Exception se) {
+	            se.printStackTrace();
+	        }
+	    }
 
-		}
-
-		return nufin;
+	    return nufinNovo;
 	}
 	
 
