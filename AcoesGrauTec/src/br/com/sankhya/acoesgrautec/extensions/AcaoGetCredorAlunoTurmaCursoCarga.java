@@ -277,6 +277,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Retorna informações dos parceiros (credores) do banco de dados.
 	private List<Object[]> retornarInformacoesParceiros() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -315,6 +317,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return listRet;
 	}
 
+	
+	//Retorna informações dos alunos do banco de dados.
 	public List<Object[]> retornarInformacoesAlunos() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -354,6 +358,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	
 	//iterarendpoint das requisicoes
 	//novo método iterarendpoint com URL encoder
+	//Processa um intervalo de datas, buscando e cadastrando alunos e credores.
 	public void processDateRange(
 	        Map<String, BigDecimal> mapaInfAlunos,
 	        Map<String, BigDecimal> mapaInfParceiros,
@@ -445,6 +450,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    }
 	}
 	
+	
+	// Itera sobre o endpoint de alunos para processar e cadastrar informações.
 	public void iterarEndpoint(Map<String, BigDecimal> mapaInfAlunos,
 			Map<String, BigDecimal> mapaInfParceiros, String url, String token,
 			BigDecimal codEmp) throws Exception {
@@ -478,7 +485,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	}
 	
 	
-
+    //Atualiza o status de uma ação agendada no banco de dados.
 	private void updateAcaoAgendada() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -500,6 +507,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Atualiza o status de uma carga de alunos no banco de dados.
 	private void updateCarga(BigDecimal idCarga) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -522,6 +531,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	// Insere a última página processada no banco de dados.
 	private void insertUltPagina(int pagina) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -544,6 +554,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Retorna a última página processada do banco de dados.
 	public int getPagina() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -577,6 +589,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return pagina;
 	}
 
+	
+	//Cadastra credores, alunos, cursos e turmas com base nos dados recebidos.
 	public void cadastrarCredorAlunoCursoTurma(
 			Map<String, BigDecimal> mapaInfAlunos,
 			Map<String, BigDecimal> mapaInfParceiros, String dadosCombinados,
@@ -840,7 +854,11 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 			}
 		}
 	}
-
+	
+	
+	
+	
+//Verifica se um credor já existe no banco de dados.
 	public boolean getIfCredorExist(String credorCpf) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -878,6 +896,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	//Verifica se um aluno já existe no banco de dados.
 	public boolean getIfAlunoExist(String alunoCpf) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -915,6 +934,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	
+	//Retorna o código do credor cadastrado no banco de dados.
 	public BigDecimal getCredorCadastrado(String credorCpf) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -948,7 +969,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 		return credorCadastrado;
 	}
-
+	
+	
+//Atualiza o número de parceiros no banco de dados.
 	public void updateTgfNumParc() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -970,6 +993,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Atualiza as informações de um aluno no banco de dados.
 	public void updateAluno(String idSituacao, String situacao, String idAluno)
 			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -994,6 +1019,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Retorna o número máximo de parceiros cadastrados no banco de dados.
 	public BigDecimal getMaxNumParc() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1026,6 +1053,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return bd;
 	}
 
+	
+	// Insere um novo credor no banco de dados.
 	public BigDecimal insertCredor(String credorNome, String credorCpf,
 			String credorEndereco, String credorCep, String credorBairro,
 			String credorCidade, String credorUf, String credorResidencial,
@@ -1094,6 +1123,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return atualCodparc;
 	}
 
+	
+	//Insere um novo curso e turma no banco de dados.
 	public void insertCursoTurma(String cursoDescricao, String cursoId,
 			String turmaId, String credorNome, String alunoNome,
 			BigDecimal codEmp) throws Exception {
@@ -1119,6 +1150,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Valida se um curso já está cadastrado no banco de dados.
 	public boolean validarCadastroCurso(String curso, String credorNome,
 			String alunoNome) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1162,7 +1195,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 		return false;
 	}
-
+	
+	
+	
+//Valida se um curso já está cadastrado como projeto no banco de dados.
 	public boolean validarCadastroCursoProj(String curso, String credorNome,
 			String alunoNome, BigDecimal codEmp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1206,6 +1242,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	
+	//Valida se uma turma já está cadastrada no banco de dados.
 	public boolean validarCadastroTurma(String turma, String credorNome,
 			String alunoNome, String cursoNome, BigDecimal codEmp)
 			throws Exception {
@@ -1254,6 +1292,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	
+	//Insere uma nova turma no banco de dados.
 	public void insertCadastroTurma(String turmaId, BigDecimal codEmp,
 			String cursoDescricao) throws Exception {
 		
@@ -1284,6 +1324,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 			
 		}
 	}
+	
+	//Insere um novo curso no banco de dados.
 
 	public void insertCurso(String cursoDescricao, String cursoId,
 			String credorNome, String alunoNome) throws Exception {
@@ -1324,6 +1366,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	//Atualiza as informações de um curso no banco de dados.
 	public void updateCurso(String cursoDescricao, String cursoId,
 			String credorNome, String alunoNome) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1355,6 +1399,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 
+	
+	// Retorna o código máximo de projetos no banco de dados.
 	public BigDecimal getMaxCodProjPaiProj(BigDecimal codEmp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1391,6 +1437,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return codProjPai;
 	}
 
+	
+	// Insere um novo curso como projeto no banco de dados.
 	public BigDecimal insertCursoProj(String cursoDescricao, String credorNome,
 			String alunoNome, BigDecimal codEmp, String cursoId)
 			throws Exception {
@@ -1428,6 +1476,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return null;
 	}
 
+	
+
+	//Insere um novo aluno no banco de dados.
+	//ERRO DA DESCRICAO DO CURSO
 	public void insertAluno(BigDecimal credotAtual, String alunoId,
 	        String alunoNome, String alunoNomeSocial, String alunoEndereco,
 	        String alunoCep, String alunoBairro, String alunoCidade,
@@ -1436,10 +1488,6 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        String alunoResidencial, String alunoEmail, String alunoSituacao,
 	        String alunoSituacaoId, String credorNome, BigDecimal codEmp,
 	        String descrCurso, String turmaId) throws Exception {
-
-	    System.out.println("\n=== DEBUG INSERT ALUNO ===");
-	    System.out.println("turmaId: " + turmaId);
-	    System.out.println("descrCurso original: " + descrCurso);
 
 	    if (credotAtual == null) {
 	        throw new IllegalArgumentException("credotAtual não pode ser nulo");
@@ -1488,10 +1536,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            .replace("Ú", "U")
 	            .replace("Ç", "C");
 	            
-	        System.out.println("[DEBUG] descrCurso normalizado: " + normalizedDescrCurso);
-	        
 	        boolean cursoEncontrado = false;
-	        System.out.println("[DEBUG] Buscando curso no banco. Cursos disponíveis:");
 	        
 	        while (rs.next()) {
 	            String descricaoBanco = rs.getString("descrcencus");
@@ -1501,7 +1546,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	                .trim()
 	                .replace("Á", "A")
 	                .replace("À", "A")
-	                .replace("Ã", "A")
+	                .replace("Ã", "A") 
 	                .replace("Â", "A")
 	                .replace("É", "E")
 	                .replace("Ê", "E")
@@ -1512,11 +1557,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	                .replace("Ú", "U")
 	                .replace("Ç", "C");
 	                
-	            System.out.println(" - Original: [" + descricaoBanco + "] Normalizado: [" + descricaoBancoNormalizada + "]");
-	            
 	            if (normalizedDescrCurso.equals(descricaoBancoNormalizada)) {
 	                codCenCus = rs.getBigDecimal("codcencus");
-	                System.out.println("[DEBUG] Curso encontrado! Código: " + codCenCus + " para: [" + descricaoBanco + "]");
 	                cursoEncontrado = true;
 	                break;
 	            }
@@ -1532,13 +1574,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            verifyStmt.setString(1, "%" + normalizedDescrCurso.replace("CURSO TECNICO EM", "%") + "%");
 	            rs = verifyStmt.executeQuery();
 	            
-	            System.out.println("[DEBUG] Fazendo busca menos restritiva com: " + 
-	                normalizedDescrCurso.replace("CURSO TECNICO EM", "%"));
-	            
 	            if (rs.next()) {
 	                codCenCus = rs.getBigDecimal("codcencus");
-	                System.out.println("[DEBUG] Curso encontrado na busca menos restritiva! Código: " + 
-	                    codCenCus + " para: [" + rs.getString("descrcencus") + "]");
 	                cursoEncontrado = true;
 	            } else {
 	                throw new SQLException("Nenhum curso encontrado para a descrição: " + descrCurso);
@@ -1547,9 +1584,6 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 	        String sqlP = "INSERT INTO AD_ALUNOS (CODPARC, ID_EXTERNO, NOME, NOME_SOCIAL, ENDERECO, CEP, BAIRRO, CIDADE, UF, SEXO, DATA_NASCIMENTO, RG, CPF, TELEFONE_CELULAR, TELEFONE_RESIDENCIAL, EMAIL, SITUACAO, SITUACAO_ID, CODEMP, CODCENCUS, TURMA) "
 	                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-	        System.out.println("[DEBUG] Query SQL: " + sqlP);
-	        System.out.println("[DEBUG] Valor de turmaId antes do INSERT: " + turmaId);
 
 	        pstmt = jdbc.getPreparedStatement(sqlP);
 
@@ -1575,10 +1609,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        pstmt.setBigDecimal(20, codCenCus); // Usa o código do curso obtido na verificação
 	        pstmt.setString(21, turmaId);
 
-	        int rowsAffected = pstmt.executeUpdate();
-
-	        System.out.println("[DEBUG] Número de linhas afetadas pelo INSERT: " + rowsAffected);
-	        System.out.println("[DEBUG] Aluno inserido com sucesso na turma: " + turmaId);
+	        pstmt.executeUpdate();
 
 	    } catch (SQLException e) {
 	        String errorDetails = String.format(
@@ -1586,10 +1617,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            credotAtual, alunoId, alunoNome, descrCurso, e.getMessage()
 	        );
 	        selectsParaInsert.add("SELECT <#NUMUNICO#>, '" + errorDetails + "', SYSDATE, 'Erro', " + codEmp + ", '" + alunoId + "' FROM DUAL");
-
-	        System.err.println("[DEBUG] Erro ao inserir aluno na turma: " + turmaId);
-	        System.err.println("[DEBUG] Mensagem de erro: " + e.getMessage());
-	        e.printStackTrace();
+	        
 	        throw e;
 	    } finally {
 	        if (rs != null) {
@@ -1605,6 +1633,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    }
 	}
 
+	
+	//Valida se um endereço já está cadastrado no banco de dados.
 	public boolean validarCadastroEndereco(String endereco, String credorNome,
 			String alunoNome) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1646,6 +1676,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	
+	//Valida se um bairro já está cadastrado no banco de dados.
 	public boolean validarCadastroBairro(String bairro, String credorNome,
 			String alunoNome) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1687,6 +1719,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return false;
 	}
 
+	
+	//Insere um novo bairro no banco de dados.
 	public BigDecimal insertBairro(String bairro, String credorNome,
 			String alunoNome) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1722,7 +1756,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 		return codbai;
 	}
-
+	
+	
+//Retorna o número máximo de bairros cadastrados no banco de dados.
 	public BigDecimal getMaxNumBai() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1758,6 +1794,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return id;
 	}
 
+	
+	//Atualiza o número de bairros no banco de dados.
 	public void updateNumBai() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1778,6 +1816,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 			jdbc.closeSession();
 		}
 	}
+	
+	
+	//Insere um log de integração no banco de dados.
 
 	public void insertLogIntegracao(String descricao, String status,
 			String credorNome, String alunoNome) throws Exception {
@@ -1814,6 +1855,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 	
+	
+	// Insere uma lista de logs no banco de dados.
+	
 	public void insertLogList(String listInsert) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1838,7 +1882,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	}
 
 
-/**
+/** Faz uma requisição HTTP GET para uma API e retorna a resposta.
  * Versão otimizada do método apiGet com melhor tratamento de erros e recursos
  */
 	 public String[] apiGet2(String ur, String token) throws Exception {
