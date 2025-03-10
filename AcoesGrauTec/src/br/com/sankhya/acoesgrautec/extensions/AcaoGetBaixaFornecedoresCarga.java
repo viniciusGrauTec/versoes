@@ -352,7 +352,7 @@ public class AcaoGetBaixaFornecedoresCarga implements AcaoRotinaJava, ScheduledA
 			
 			jdbc.openSession();
 
-			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
+			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO FROM AD_LINKSINTEGRACAO";
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 			pstmt = jdbc.getPreparedStatement(query);
 
@@ -362,6 +362,14 @@ public class AcaoGetBaixaFornecedoresCarga implements AcaoRotinaJava, ScheduledA
 
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
+				String statusIntegracao = rs.getString("INTEGRACAO");
+				
+				
+				// Verifica se a integração está ativa para esta empresa
+				if (!"S".equals(statusIntegracao)) {
+					System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+					continue; // Pula para a próxima iteração do loop
+				}
 
 				iterarEndpoint(url, token, codEmp, mapaInfTipoTituloTaxa, mapaInfBanco,
 						mapaInfConta, mapaInfFinanceiro,

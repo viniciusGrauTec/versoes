@@ -23,8 +23,10 @@ import java.net.URLEncoder;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -59,8 +61,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		
 		try {
 
-			// Alunos
-			List<Object[]> listInfAlunos = retornarInformacoesAlunos(); 
+			// Alunos Popula o mapa com alunos existentes, evitando consultas repetidas ao banco.
+			List<Object[]> listInfAlunos = retornarInformacoesAlunos();           
 			Map<String, BigDecimal> mapaInfAlunos = new HashMap<String, BigDecimal>();
 			for (Object[] obj : listInfAlunos) {
 				BigDecimal codParc = (BigDecimal) obj[0];
@@ -84,7 +86,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 				}
 			}
 			
-			processDateRange(mapaInfAlunos, mapaInfParceiros, url, token,
+			processDateRangeByMonths(mapaInfAlunos, mapaInfParceiros, url, token,
 					codEmp, dataInicio, dataFim, matricula);
 			
 			contexto.setMensagemRetorno("Periodo Processado!");
@@ -174,7 +176,8 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 			jdbc.openSession();
 			
-			String queryEmp = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
+			// Modificado para incluir a verificação da flag INTEGRACAO
+			String queryEmp = "SELECT CODEMP, URL, TOKEN, INTEGRACAO FROM AD_LINKSINTEGRACAO";
 
 			pstmt = jdbc.getPreparedStatement(queryEmp);
 
@@ -188,9 +191,16 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 				System.out.println("While principal");
 
 				codEmp = rs.getBigDecimal("CODEMP");
-
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
+				String statusIntegracao = rs.getString("INTEGRACAO");
+				
+				// Verifica se a integração está ativa para esta empresa
+				if (!"S".equals(statusIntegracao)) {
+					System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+					continue; // Pula para a próxima iteração do loop
+				}
+				
 				System.out.println("Processando empresa " + codEmp + " na thread " + threadName);
 				
 				iterarEndpoint(mapaInfAlunos, mapaInfParceiros, url, token,                                
@@ -273,9 +283,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 				this.selectsParaInsert = new ArrayList<String>();
 				
 			}
-		
 		}
 	}
+		
+		
 
 	
 	//Retorna informações dos parceiros (credores) do banco de dados.
@@ -354,11 +365,41 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 		return listRet;
 	}
+	
+	
+	public void processDateRangeByMonths(Map<String, BigDecimal> mapaInfAlunos,
+			Map<String, BigDecimal> mapaInfParceiros, String url, String token, BigDecimal codEmp, String dataInicio,
+			String dataFim, String matricula) throws Exception {
+
+// Converter strings de data para objetos LocalDate
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+		LocalDate inicio = LocalDate.parse(dataInicio, formatter);
+		LocalDate fim = LocalDate.parse(dataFim, formatter);
+
+// Dividir o intervalo em períodos mensais
+		LocalDate periodoInicio = inicio;
+		while (periodoInicio.isBefore(fim) || periodoInicio.isEqual(fim)) {
+// Definir o fim do período atual (fim do mês ou a data final)
+			LocalDate periodoFim = periodoInicio.plusMonths(1).withDayOfMonth(1).minusDays(1);
+			if (periodoFim.isAfter(fim)) {
+				periodoFim = fim;
+			}
+
+// Processar este período
+			System.out.println("Processando período: " + periodoInicio + " até " + periodoFim);
+			processDateRange(mapaInfAlunos, mapaInfParceiros, url, token, codEmp, periodoInicio.format(formatter),
+					periodoFim.format(formatter), matricula);
+
+// Avançar para o próximo mês
+			periodoInicio = periodoInicio.plusMonths(1).withDayOfMonth(1);
+		}
+	}
 
 	
 	//iterarendpoint das requisicoes
 	//novo método iterarendpoint com URL encoder
 	//Processa um intervalo de datas, buscando e cadastrando alunos e credores.
+	//correção do processDateRange  onde : Se todas as páginas completas retornam exatamente 100 registros (inclusive a última), o sistema nunca irá parar de fazer requisições porque a condição paginaAtual.length() < 100 nunca se tornará verdadeira.
 	public void processDateRange(
 	        Map<String, BigDecimal> mapaInfAlunos,
 	        Map<String, BigDecimal> mapaInfParceiros,
@@ -409,26 +450,46 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            if (status == 200) {
 	                JSONArray paginaAtual = new JSONArray(response[1]);
 	                
-	                // Adicionar registros ao array acumulado
-	                for (int i = 0; i < paginaAtual.length(); i++) {
-	                    todosRegistros.put(paginaAtual.getJSONObject(i));
-	                }
-	                
-	                // Verificar se é a última página
-	                if (paginaAtual.length() <100) {
+	                // Verificar se há registros nesta página
+	                if (paginaAtual.length() == 0) {
+	                    // Página vazia, parar o processamento
 	                    temMaisRegistros = false;
+	                    System.out.println("Página " + pagina + " vazia. Finalizando coleta de dados.");
 	                } else {
-	                    pagina++;
+	                    // Adicionar registros ao array acumulado
+	                    for (int i = 0; i < paginaAtual.length(); i++) {
+	                        todosRegistros.put(paginaAtual.getJSONObject(i));
+	                    }
+	                    
+	                    // Verificar se é a última página (menos de 100 registros OU exatamente 100 mas a próxima página não existe)
+	                    if (paginaAtual.length() < 100) {
+	                        temMaisRegistros = false;
+	                        System.out.println("Última página encontrada com " + paginaAtual.length() + " registros.");
+	                    } else {
+	                        // Considerar solicitar a próxima página para verificar se ela existe
+	                        pagina++;
+	                        System.out.println("Página " + (pagina-1) + " completa com 100 registros. Avançando para página " + pagina);
+	                    }
+	                    
+	                    System.out.println("Página " + (pagina-1) + ": " + paginaAtual.length() + 
+	                                     " registros. Total acumulado: " + todosRegistros.length());
 	                }
-	                
-	                System.out.println("Página " + pagina + ": " + paginaAtual.length() + 
-	                                  " registros. Total acumulado: " + todosRegistros.length());
+	            } else if (status == 404) {
+	                // Assumindo que a API retorna 404 quando a página não existe
+	                temMaisRegistros = false;
+	                System.out.println("Página " + pagina + " >:( não encontrada (404). Finalizando coleta de dados.");
 	            } else {
 	                throw new Exception(String.format(
 	                    "Erro na requisição de alunos. Status: %d. Resposta: %s. URL: %s",
 	                    status, response[1], urlCompleta
 	                ));
 	            }
+	        }
+	        
+	        // Verificar se foram encontrados registros
+	        if (todosRegistros.length() == 0) {
+	            System.out.println("Nenhum registro de aluno encontrado para o período especificado. ;(");
+	            return;
 	        }
 	        
 	        // Criar uma resposta combinada com todos os registros
@@ -774,7 +835,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 								+ ": alunoId");
 						
 						if (!aluno) {
-							insertAluno(credotAtual, alunoId, alunoNome,
+							insertAluno(credotAtual, alunoId, alunoNome,             // Insere o aluno apenas se não existir
 									alunoNomeSocial, alunoEndereco, alunoCep,
 									alunoBairro, alunoCidade, alunoUf,
 									alunoSexo, alunoDataNascimento, alunoRg,
@@ -821,7 +882,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 									credorNome, codEmp, cursoDescricao, turmaId);
 						
 						} else {
-							updateAluno(alunoSituacaoId, alunoSituacao, alunoId);
+							updateAluno(alunoSituacaoId, alunoSituacao, alunoId);          // Atualiza o aluno existente
 						}
 
 						/*
@@ -1053,75 +1114,407 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return bd;
 	}
 
+
+	
+	public BigDecimal insertCredor(String credorNome, String credorCpf,
+	        String credorEndereco, String credorCep, String credorBairro,
+	        String credorCidade, String credorUf, String credorResidencial,
+	        String credorCelular, String credorComercial, String alunoNome,
+	        BigDecimal codemp)
+	        throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
+	    PreparedStatement pstmtCheck = null;
+	    ResultSet rs = null;
+
+	    EnviromentUtils util = new EnviromentUtils();
+
+	    BigDecimal atualCodparc = util.getMaxNumParc();
+	    BigDecimal codCid = null;
+
+	    String tipPessoa = "";
+
+	    BigDecimal countBai = BigDecimal.ZERO;
+	    BigDecimal codEnd = BigDecimal.ZERO;
+	    BigDecimal codBai = BigDecimal.ZERO;
+	    if (credorCpf.length() == 11) {
+	        tipPessoa = "F";
+	    } else if (credorCpf.length() == 14) {
+	        tipPessoa = "J";
+	    }
+	    if ((credorBairro != null)
+	            && (validarCadastroBairro(credorBairro, credorNome, alunoNome))) {
+	        codBai = insertBairro(credorBairro, credorNome, alunoNome);
+	        countBai = countBai.add(BigDecimal.ONE);
+	    }
+	    try {
+	        jdbc.openSession();
+	        
+	        // Primeiro, verifica se a cidade existe e obter seu código
+	        String checkCidadeSQL = "SELECT max(codcid) as codcid FROM tsicid WHERE " +
+	            "TRANSLATE(UPPER(descricaocorreio), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE(UPPER(?), " +
+	            "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') " +
+	            "OR SUBSTR(UPPER(descricaocorreio), 1, INSTR(UPPER(descricaocorreio), ' ') - 1) " +
+	            "LIKE TRANSLATE(UPPER(?), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')";
+	            
+	        pstmtCheck = jdbc.getPreparedStatement(checkCidadeSQL);
+	        pstmtCheck.setString(1, credorCidade.trim());
+	        pstmtCheck.setString(2, credorCidade.trim());
+	        rs = pstmtCheck.executeQuery();
+	        
+	        if (rs.next()) {
+	            codCid = rs.getBigDecimal("codcid");
+	        }
+	        
+	        // Se a cidade não for encontrada, insere a cidade primeiro
+	        if (codCid == null) {
+	           
+	            codCid = insertCidade(credorCidade, credorUf, jdbc);
+	            
+	            // Se ainda não conseguiu um código de cidade, registrar o erro e abortar
+	            if (codCid == null) {
+	                selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: Cidade não encontrada ou não pode ser criada: " 
+	                    + credorCidade + "', SYSDATE, 'Erro', " + codemp + ", '" + credorNome + "' FROM DUAL");
+	                return null;
+	            }
+	        }
+
+	        String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL, TIPPESSOA, AD_ENDCREDOR, " +
+	            "CODBAI, CODCID, CEP, TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) " +
+	            "VALUES(?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE(upper(nomebai), " +
+	            "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') " +
+	            "like TRANSLATE(upper(?), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')), 0), ?, ?, ?, ?, SYSDATE, SYSDATE, 'S')";
+
+	        pstmt = jdbc.getPreparedStatement(sqlP);
+	        pstmt.setBigDecimal(1, atualCodparc);
+	        pstmt.setString(2, credorNome.toUpperCase());
+	        pstmt.setString(3, credorNome.toUpperCase());
+	        pstmt.setString(4, tipPessoa);
+	        pstmt.setString(5, credorEndereco);
+	        pstmt.setString(6, credorBairro);
+	        pstmt.setBigDecimal(7, codCid);  // Usar o código da cidade que foi verificado ou criado
+	        pstmt.setString(8, credorCep);
+	        pstmt.setString(9, credorCelular);
+	        pstmt.setString(10, credorCpf);
+
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	        selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() 
+	            + "', SYSDATE, 'Erro', " + codemp + ", '" + credorNome + "' FROM DUAL");
+	        e.printStackTrace();
+	        atualCodparc = null;
+	    } finally {
+	        if (rs != null) {
+	            rs.close();
+	        }
+	        if (pstmtCheck != null) {
+	            pstmtCheck.close();
+	        }
+	        if (pstmt != null) {
+	            pstmt.close();
+	        }
+	        jdbc.closeSession();
+	    }
+	    return atualCodparc;
+	}
+
+	
+	private BigDecimal insertCidade(String nomeCidade, String uf, JdbcWrapper jdbc) throws Exception {
+	    PreparedStatement pstmt = null;
+	    ResultSet rs = null;
+	    BigDecimal codCid = null;
+
+	    try {
+	        System.out.println("DEBUG: Iniciando inserção da cidade: " + nomeCidade + ", UF: " + uf);
+	        
+	        // Verificar se a cidade já existe
+	        String sqlVerifica = "SELECT CODCID FROM TSICID WHERE UPPER(NOMECID) = ? AND UPPER(UF) = ?";
+	        System.out.println("DEBUG: Verificando se cidade já existe: " + sqlVerifica);
+	        pstmt = jdbc.getPreparedStatement(sqlVerifica);
+	        pstmt.setString(1, nomeCidade.toUpperCase());
+	        pstmt.setString(2, uf.toUpperCase());
+	        rs = pstmt.executeQuery();
+	        
+	        if (rs.next()) {
+	            codCid = rs.getBigDecimal("CODCID");
+	            System.out.println("DEBUG: Cidade já existe com código: " + codCid);
+	            return codCid;
+	        }
+	        
+	        rs.close();
+	        pstmt.close();
+	        
+	        // Obter o próximo código usando consulta mais simples (evitando NVL e funções complexas)
+	        String sqlSeq = "SELECT MAX(CODCID) + 1 AS NEXT_CODCID FROM TSICID";
+	        System.out.println("DEBUG: Executando SQL simplificado para obter próximo código: " + sqlSeq);
+	        pstmt = jdbc.getPreparedStatement(sqlSeq);
+	        rs = pstmt.executeQuery();
+
+	        if (rs.next()) {
+	            codCid = rs.getBigDecimal("NEXT_CODCID");
+	            // Se o resultado for NULL (tabela vazia), começar com 1
+	            if (codCid == null) {
+	                codCid = new BigDecimal(1);
+	            }
+	            System.out.println("DEBUG: Código gerado para a nova cidade: " + codCid);
+	        } else {
+	            System.out.println("DEBUG: Não foi possível obter o próximo código, definindo como 1");
+	            codCid = new BigDecimal(1);
+	        }
+
+	        rs.close();
+	        pstmt.close();
+
+	        // Tentar inserção usando JDBC padrão
+	        String sqlInsert = "INSERT INTO TSICID (CODCID, NOMECID, UF, DESCRICAOCORREIO) VALUES (?, ?, ?, ?)";
+	        
+	        
+	        System.out.println("DEBUG: Preparando SQL de inserção: " + sqlInsert);
+	        pstmt = jdbc.getPreparedStatement(sqlInsert);
+	        
+	        int codCidInt = codCid.intValue(); // Converter para inteiro (já que CODCID é inteiro)
+	        System.out.println("DEBUG: Usando CODCID como inteiro: " + codCidInt);
+	        
+	        // Definir parâmetros como tipos primitivos para evitar conversões automatizadas
+	        pstmt.setInt(1, codCidInt);
+	        pstmt.setString(2, nomeCidade.toUpperCase());
+	        pstmt.setString(3, uf.toUpperCase());
+	        pstmt.setString(4, nomeCidade.toUpperCase());
+
+	        int rowsAffected = pstmt.executeUpdate();
+	        System.out.println("DEBUG: Inserção realizada. Linhas afetadas: " + rowsAffected);
+	        
+	        return new BigDecimal(codCidInt);
+	    } catch (SQLException e) {
+	        System.out.println("DEBUG: ERRO na inserção da cidade: " + e.getMessage());
+	        System.out.println("DEBUG: SQL State: " + e.getSQLState() + ", Error Code: " + e.getErrorCode());
+	        
+	        // Tentar inserção direta com valores literais como último recurso
+	        try {
+	            if (codCid != null) {
+	                String directSql = "INSERT INTO TSICID (CODCID, NOMECID, UF, DESCRICAOCORREIO) VALUES (" + 
+	                                  codCid.intValue() + ", '" + 
+	                                  nomeCidade.toUpperCase().replace("'", "''") + "', '" + 
+	                                  uf.toUpperCase() + "', '" + 
+	                                  nomeCidade.toUpperCase().replace("'", "''") + "')";
+	                System.out.println("DEBUG: Tentando inserção direta: " + directSql);
+	                
+	                // Usando Statement em vez de PreparedStatement para evitar parâmetros
+	                Statement stmt = jdbc.getConnection().createStatement();
+	                int rowsAffected = stmt.executeUpdate(directSql);
+	                stmt.close();
+	                
+	                System.out.println("DEBUG: Inserção direta realizada. Linhas afetadas: " + rowsAffected);
+	                return codCid;
+	            }
+	        } catch (Exception ex) {
+	            System.out.println("DEBUG: Falha na inserção direta: " + ex.getMessage());
+	        }
+	        
+	        e.printStackTrace();
+	        return null;
+	    } finally {
+	        System.out.println("DEBUG: Finalizando método insertCidade");
+	        if (rs != null) {
+	            try { rs.close(); } catch (Exception e) { /* ignore */ }
+	        }
+	        if (pstmt != null) {
+	            try { pstmt.close(); } catch (Exception e) { /* ignore */ }
+	        }
+	    }
+	}
 	
 	// Insere um novo credor no banco de dados.
-	public BigDecimal insertCredor(String credorNome, String credorCpf,
-			String credorEndereco, String credorCep, String credorBairro,
-			String credorCidade, String credorUf, String credorResidencial,
-			String credorCelular, String credorComercial, String alunoNome,
-			BigDecimal codemp)
-			throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		
-		EnviromentUtils util = new EnviromentUtils();
-		
-		BigDecimal atualCodparc = util.getMaxNumParc();
-
-		String tipPessoa = "";
-
-		BigDecimal countBai = BigDecimal.ZERO;
-		BigDecimal codEnd = BigDecimal.ZERO;
-		BigDecimal codBai = BigDecimal.ZERO;
-		if (credorCpf.length() == 11) {
-			tipPessoa = "F";
-		} else if (credorCpf.length() == 14) {
-			tipPessoa = "J";
-		}
-		if ((credorBairro != null)
-				&& (validarCadastroBairro(credorBairro, credorNome, alunoNome))) {
-			codBai = insertBairro(credorBairro, credorNome, alunoNome);
-			countBai = countBai.add(BigDecimal.ONE);
-		}
-		try {
-			jdbc.openSession();
-
-			String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL ,TIPPESSOA, AD_ENDCREDOR, CODBAI, CODCID, "
-					+ " CEP,TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) \t\tVALUES(?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE( \t\t\t    upper(nomebai), \t\t\t    '������������������������������������', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  ) like TRANSLATE( \t\t\t    upper(?), \t\t\t    '������������������������������������', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  )), 0), (SELECT max(codcid) FROM tsicid WHERE TRANSLATE(              UPPER(descricaocorreio),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               LIKE TRANSLATE(UPPER(?),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               OR SUBSTR(UPPER(descricaocorreio),               1, INSTR(UPPER(descricaocorreio), ' ') - 1)               LIKE TRANSLATE(UPPER(?),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')),  ?, ?, ?, SYSDATE, SYSDATE, 'S')";
-
-			pstmt = jdbc.getPreparedStatement(sqlP);
-			pstmt.setBigDecimal(1, atualCodparc);
-			pstmt.setString(2, credorNome.toUpperCase());
-			pstmt.setString(3, credorNome.toUpperCase());
-			pstmt.setString(4, tipPessoa);
-
-			pstmt.setString(5, credorEndereco);
-
-			pstmt.setString(6, credorBairro);
-
-			pstmt.setString(7, credorCidade.trim());
-			pstmt.setString(8, credorCidade.trim());
-
-			pstmt.setString(9, credorCep);
-			pstmt.setString(10, credorCelular);
-			pstmt.setString(11, credorCpf);
-
-			pstmt.executeUpdate();
-		} catch (SQLException e) {
-			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() +"', SYSDATE, 'Erro', "+codemp+", '"+credorNome+"' FROM DUAL");
-			/*util.inserirLog("Erro ao cadastrar credor: " + e.getMessage(),
-					"Erro", credorNome, codemp);*/
-			e.printStackTrace();
-			atualCodparc = null;
-		} finally {
-			if (pstmt != null) {
-				pstmt.close();
-			}
-			jdbc.closeSession();
-		}
-		return atualCodparc;
-	}
+//	public BigDecimal insertCredor(String credorNome, String credorCpf,
+//			String credorEndereco, String credorCep, String credorBairro,
+//			String credorCidade, String credorUf, String credorResidencial,
+//			String credorCelular, String credorComercial, String alunoNome,
+//			BigDecimal codemp)
+//			throws Exception {
+//		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+//		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+//		PreparedStatement pstmt = null;
+//		
+//		EnviromentUtils util = new EnviromentUtils();
+//		
+//		BigDecimal atualCodparc = util.getMaxNumParc();
+//
+//		String tipPessoa = "";
+//
+//		BigDecimal countBai = BigDecimal.ZERO;
+//		BigDecimal codEnd = BigDecimal.ZERO;
+//		BigDecimal codBai = BigDecimal.ZERO;
+//		if (credorCpf.length() == 11) {
+//			tipPessoa = "F";
+//		} else if (credorCpf.length() == 14) {
+//			tipPessoa = "J";
+//		}
+//		if ((credorBairro != null)
+//				&& (validarCadastroBairro(credorBairro, credorNome, alunoNome))) {
+//			codBai = insertBairro(credorBairro, credorNome, alunoNome);
+//			countBai = countBai.add(BigDecimal.ONE);
+//		}
+//		try {
+//			jdbc.openSession();
+//
+//			String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL ,TIPPESSOA, AD_ENDCREDOR, CODBAI, CODCID, "
+//					+ " CEP,TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) \t\tVALUES(?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE( \t\t\t    upper(nomebai), \t\t\t    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  ) like TRANSLATE( \t\t\t    upper(?), \t\t\t    'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  )), 0), (SELECT max(codcid) FROM tsicid WHERE TRANSLATE(              UPPER(descricaocorreio),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               LIKE TRANSLATE(UPPER(?),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               OR SUBSTR(UPPER(descricaocorreio),               1, INSTR(UPPER(descricaocorreio), ' ') - 1)               LIKE TRANSLATE(UPPER(?),               'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')),  ?, ?, ?, SYSDATE, SYSDATE, 'S')";
+//
+//			pstmt = jdbc.getPreparedStatement(sqlP);
+//			pstmt.setBigDecimal(1, atualCodparc);
+//			pstmt.setString(2, credorNome.toUpperCase());
+//			pstmt.setString(3, credorNome.toUpperCase());
+//			pstmt.setString(4, tipPessoa);
+//
+//			pstmt.setString(5, credorEndereco);
+//
+//			pstmt.setString(6, credorBairro);
+//
+//			pstmt.setString(7, credorCidade.trim());
+//			pstmt.setString(8, credorCidade.trim());
+//
+//			pstmt.setString(9, credorCep);
+//			pstmt.setString(10, credorCelular);
+//			pstmt.setString(11, credorCpf);
+//
+//			pstmt.executeUpdate();
+//		} catch (SQLException e) {
+//			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() +"', SYSDATE, 'Erro', "+codemp+", '"+credorNome+"' FROM DUAL");
+//			e.printStackTrace();
+//			atualCodparc = null;
+//		} finally {
+//			if (pstmt != null) {
+//				pstmt.close();
+//			}
+//			jdbc.closeSession();
+//		}
+//		return atualCodparc;
+//	}
+	
+	
+	// Insere um novo credor no banco de dados.
+//	public BigDecimal insertCredor(String credorNome, String credorCpf,
+//	        String credorEndereco, String credorCep, String credorBairro,
+//	        String credorCidade, String credorUf, String credorResidencial,
+//	        String credorCelular, String credorComercial, String alunoNome,
+//	        BigDecimal codemp)
+//	        throws Exception {
+//	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+//	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+//	    PreparedStatement pstmt = null;
+//	    ResultSet rs = null;
+//	    
+//	    EnviromentUtils util = new EnviromentUtils();
+//	    
+//	    BigDecimal atualCodparc = util.getMaxNumParc();
+//
+//	    String tipPessoa = "";
+//
+//	    BigDecimal countBai = BigDecimal.ZERO;
+//	    BigDecimal codEnd = BigDecimal.ZERO;
+//	    BigDecimal codBai = BigDecimal.ZERO;
+//	    if (credorCpf.length() == 11) {
+//	        tipPessoa = "F";
+//	    } else if (credorCpf.length() == 14) {
+//	        tipPessoa = "J";
+//	    }
+//	    if ((credorBairro != null)
+//	            && (validarCadastroBairro(credorBairro, credorNome, alunoNome))) {
+//	        codBai = insertBairro(credorBairro, credorNome, alunoNome);
+//	        countBai = countBai.add(BigDecimal.ONE);
+//	    }
+//	    try {
+//	        jdbc.openSession();
+//
+//	        // Primeiro, verifica se a cidade existe
+//	        String sqlVerificaCidade = "SELECT COUNT(*) FROM tsicid WHERE UPPER(descricaocorreio) LIKE UPPER(?)";
+//	        pstmt = jdbc.getPreparedStatement(sqlVerificaCidade);
+//	        pstmt.setString(1, credorCidade);
+//	        rs = pstmt.executeQuery();
+//	        boolean cidadeExiste = false;
+//	        if (rs.next()) {
+//	            cidadeExiste = rs.getInt(1) > 0;
+//	        }
+//	        rs.close();
+//	        pstmt.close();
+//
+//	        // Se a cidade não existe, insira-a
+//	        BigDecimal codcid = BigDecimal.ONE; // Valor padrão
+//	        if (!cidadeExiste) {
+//	            String sqlInsereCidade = "INSERT INTO tsicid(codcid, descricaocorreio, nomecid, uf) VALUES(?, ?, ?, ?)";
+//	            pstmt = jdbc.getPreparedStatement(sqlInsereCidade);
+//	            // Obter próximo ID para cidade
+//	            String sqlMaxCodcid = "SELECT NVL(MAX(codcid), 0) + 1 FROM tsicid";  //gerou automaticamente o próximo valor disponível
+//	            PreparedStatement pstmtMaxCodcid = jdbc.getPreparedStatement(sqlMaxCodcid);
+//	            rs = pstmtMaxCodcid.executeQuery();
+//	            if (rs.next()) {
+//	                codcid = rs.getBigDecimal(1);
+//	            }
+//	            rs.close();
+//	            pstmtMaxCodcid.close();
+//
+//	            pstmt.setBigDecimal(1, codcid);
+//	            pstmt.setString(2, credorCidade);
+//	            pstmt.setString(3, credorCidade);
+//	            pstmt.setString(4, credorUf);
+//	            pstmt.executeUpdate();
+//	            pstmt.close();
+//	        } else {
+//	            // Se a cidade existe, obtenha o código dela
+//	            String sqlGetCodcid = "SELECT codcid FROM tsicid WHERE UPPER(descricaocorreio) LIKE UPPER(?)";
+//	            pstmt = jdbc.getPreparedStatement(sqlGetCodcid);
+//	            pstmt.setString(1, credorCidade);
+//	            rs = pstmt.executeQuery();
+//	            if (rs.next()) {
+//	                codcid = rs.getBigDecimal(1);
+//	            }
+//	            rs.close();
+//	            pstmt.close();
+//	        }
+//
+//	        // Agora insira o credor usando o codcid obtido ou inserido
+//	        String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL, TIPPESSOA, AD_ENDCREDOR, CODBAI, CODCID, " 
+//	                + "CEP, TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) "
+//	                + "VALUES(?, ?, ?, ?, ?, "
+//	                + "NVL((select max(codbai) from tsibai where "
+//	                + "    UPPER(nomebai) LIKE UPPER(?)), 0), "
+//	                + "?, " // Usar o codcid obtido anteriormente
+//	                + "?, ?, ?, SYSDATE, SYSDATE, 'S')";
+//
+//	        pstmt = jdbc.getPreparedStatement(sqlP);
+//	        pstmt.setBigDecimal(1, atualCodparc);
+//	        pstmt.setString(2, credorNome.toUpperCase());
+//	        pstmt.setString(3, credorNome.toUpperCase());
+//	        pstmt.setString(4, tipPessoa);
+//	        pstmt.setString(5, credorEndereco);
+//	        pstmt.setString(6, credorBairro);
+//	        pstmt.setBigDecimal(7, codcid); // Usar o codcid que foi verificado ou inserido
+//	        pstmt.setString(8, credorCep);
+//	        pstmt.setString(9, credorCelular);
+//	        pstmt.setString(10, credorCpf);
+//
+//	        pstmt.executeUpdate();
+//	    } catch (SQLException e) {
+//	        selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() +"', SYSDATE, 'Erro', "+codemp+", '"+credorNome+"' FROM DUAL");
+//	        System.out.println("Erro específico: " + e.getMessage());
+//	        e.printStackTrace();
+//	        atualCodparc = null;
+//	    } finally {
+//	        if (rs != null) {
+//	            rs.close();
+//	        }
+//	        if (pstmt != null) {
+//	            pstmt.close();
+//	        }
+//	        jdbc.closeSession();
+//	    }
+//	    return atualCodparc;
+//	}
+	
 
 	
 	//Insere um novo curso e turma no banco de dados.
@@ -1479,6 +1872,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	
 
 	//Insere um novo aluno no banco de dados.
+	
 	//ERRO DA DESCRICAO DO CURSO
 	public void insertAluno(BigDecimal credotAtual, String alunoId,
 	        String alunoNome, String alunoNomeSocial, String alunoEndereco,
@@ -1489,13 +1883,17 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        String alunoSituacaoId, String credorNome, BigDecimal codEmp,
 	        String descrCurso, String turmaId) throws Exception {
 
-	    if (credotAtual == null) {
-	        throw new IllegalArgumentException("credotAtual não pode ser nulo");
-	    }
+	    System.out.println("\n=== DEBUG INSERT ALUNO ===");
+	    System.out.println("turmaId: " + turmaId);
+	    System.out.println("descrCurso original: " + descrCurso);
 
-	    if (descrCurso == null || descrCurso.trim().isEmpty()) {
+	    /*if (credotAtual == null) {  // == codparc na ad_alunos
+	        throw new IllegalArgumentException("codparc não pode ser nulo :(");
+	    } */ 
+
+	   /* if (descrCurso == null || descrCurso.trim().isEmpty()) {
 	        throw new IllegalArgumentException("descrCurso não pode ser nulo ou vazio");
-	    }
+	    } */
 
 	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1536,7 +1934,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            .replace("Ú", "U")
 	            .replace("Ç", "C");
 	            
+	        System.out.println("[DEBUG] descrCurso normalizado: " + normalizedDescrCurso);
+	        
 	        boolean cursoEncontrado = false;
+	        System.out.println("[DEBUG] Buscando curso no banco. Cursos disponíveis:");
 	        
 	        while (rs.next()) {
 	            String descricaoBanco = rs.getString("descrcencus");
@@ -1557,8 +1958,11 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	                .replace("Ú", "U")
 	                .replace("Ç", "C");
 	                
+	            System.out.println(" - Original: [" + descricaoBanco + "] Normalizado: [" + descricaoBancoNormalizada + "]");
+	            
 	            if (normalizedDescrCurso.equals(descricaoBancoNormalizada)) {
 	                codCenCus = rs.getBigDecimal("codcencus");
+	                System.out.println("[DEBUG] Curso encontrado! Código: " + codCenCus + " para: [" + descricaoBanco + "]");
 	                cursoEncontrado = true;
 	                break;
 	            }
@@ -1574,8 +1978,13 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            verifyStmt.setString(1, "%" + normalizedDescrCurso.replace("CURSO TECNICO EM", "%") + "%");
 	            rs = verifyStmt.executeQuery();
 	            
+	            System.out.println("[DEBUG] Fazendo busca menos restritiva com: " + 
+	                normalizedDescrCurso.replace("CURSO TECNICO EM", "%"));
+	            
 	            if (rs.next()) {
 	                codCenCus = rs.getBigDecimal("codcencus");
+	                System.out.println("[DEBUG] Curso encontrado na busca menos restritiva! Código: " + 
+	                    codCenCus + " para: [" + rs.getString("descrcencus") + "]");
 	                cursoEncontrado = true;
 	            } else {
 	                throw new SQLException("Nenhum curso encontrado para a descrição: " + descrCurso);
@@ -1584,6 +1993,9 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 	        String sqlP = "INSERT INTO AD_ALUNOS (CODPARC, ID_EXTERNO, NOME, NOME_SOCIAL, ENDERECO, CEP, BAIRRO, CIDADE, UF, SEXO, DATA_NASCIMENTO, RG, CPF, TELEFONE_CELULAR, TELEFONE_RESIDENCIAL, EMAIL, SITUACAO, SITUACAO_ID, CODEMP, CODCENCUS, TURMA) "
 	                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT TO_CHAR(TO_DATE(?, 'yyyy-MM-dd'), 'dd/MM/yyyy') FROM dual), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+	        System.out.println("[DEBUG] Query SQL: " + sqlP);
+	        System.out.println("[DEBUG] Valor de turmaId antes do INSERT: " + turmaId);
 
 	        pstmt = jdbc.getPreparedStatement(sqlP);
 
@@ -1609,7 +2021,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        pstmt.setBigDecimal(20, codCenCus); // Usa o código do curso obtido na verificação
 	        pstmt.setString(21, turmaId);
 
-	        pstmt.executeUpdate();
+	        int rowsAffected = pstmt.executeUpdate();
+
+	        System.out.println("[DEBUG] Número de linhas afetadas pelo INSERT: " + rowsAffected);
+	        System.out.println("[DEBUG] Aluno inserido com sucesso na turma: " + turmaId);
 
 	    } catch (SQLException e) {
 	        String errorDetails = String.format(
@@ -1617,7 +2032,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	            credotAtual, alunoId, alunoNome, descrCurso, e.getMessage()
 	        );
 	        selectsParaInsert.add("SELECT <#NUMUNICO#>, '" + errorDetails + "', SYSDATE, 'Erro', " + codEmp + ", '" + alunoId + "' FROM DUAL");
-	        
+
+	        System.err.println("[DEBUG] Erro ao inserir aluno na turma: " + turmaId);
+	        System.err.println("[DEBUG] Mensagem de erro: " + e.getMessage());
+	        e.printStackTrace();
 	        throw e;
 	    } finally {
 	        if (rs != null) {
@@ -1758,7 +2176,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	}
 	
 	
-//Retorna o número máximo de bairros cadastrados no banco de dados.
+
 	public BigDecimal getMaxNumBai() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1794,8 +2212,6 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		return id;
 	}
 
-	
-	//Atualiza o número de bairros no banco de dados.
 	public void updateNumBai() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1816,9 +2232,6 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 			jdbc.closeSession();
 		}
 	}
-	
-	
-	//Insere um log de integração no banco de dados.
 
 	public void insertLogIntegracao(String descricao, String status,
 			String credorNome, String alunoNome) throws Exception {
@@ -1855,9 +2268,6 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 		}
 	}
 	
-	
-	// Insere uma lista de logs no banco de dados.
-	
 	public void insertLogList(String listInsert) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1882,7 +2292,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	}
 
 
-/** Faz uma requisição HTTP GET para uma API e retorna a resposta.
+/**
  * Versão otimizada do método apiGet com melhor tratamento de erros e recursos
  */
 	 public String[] apiGet2(String ur, String token) throws Exception {

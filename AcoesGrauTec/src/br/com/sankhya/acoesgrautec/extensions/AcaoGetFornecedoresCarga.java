@@ -22,11 +22,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.activiti.engine.impl.util.json.JSONArray;
 import org.cuckoo.core.ScheduledAction;
@@ -51,6 +53,13 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
 	 		String idForn = (String) contexto.getParam("IDFORN");
 	 		
+	 	// Obter o valor do parâmetro PROFESSOR e converter para boolean
+	 		String valorProfessor = (String) contexto.getParam("PROFESSOR");
+	 		boolean apenasProfe = valorProfessor != null && valorProfessor.equalsIgnoreCase("S");
+	 		
+	 	// Log para debug
+	 		System.out.println("Valor do parâmetro PROFESSOR: " + valorProfessor);
+	 		System.out.println("Filtrando apenas professores: " + apenasProfe);
 	 		
 	 		try {
 
@@ -85,8 +94,9 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 				}
 	 			}
 	 			
-	 			processDateRange(mapaInfIdParceiros, mapaInfParceiros, url,                               //processDateRange
-	 					token, codEmp, dataInicio, dataFim, idForn);
+	 			
+	 			processDateRangeByMonthsForSuppliers(mapaInfIdParceiros, mapaInfParceiros, url,                               //processDateRange
+	 					token, codEmp, dataInicio, dataFim, idForn,apenasProfe);
 	 			
 	 			contexto.setMensagemRetorno("Periodo Processado!");
 	 			
@@ -174,10 +184,9 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			}
 
 	 			jdbc.openSession();
-
-	 			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
-	 			//String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-	 			//String query4 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 4";
+	 			
+	 		    // Modificado para incluir a verificação da flag INTEGRACAO 
+	 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO FROM AD_LINKSINTEGRACAO";
 
 	 			pstmt = jdbc.getPreparedStatement(query);
 
@@ -189,12 +198,13 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 
 	 				url = rs.getString("URL");
 	 				token = rs.getString("TOKEN");
+	 				String statusIntegracao = rs.getString("INTEGRACAO");
 	 				
-	 				
-	 				//System.out.println("ENTROU NO ONTIME DA  acaoGetFornecedorTiposCarga! ");
-	 				
-	 				//chamar o m�todo selecionarTiposFornecedores
-	 				//selecionarTiposFornecedores(jdbc, mapaInfIdParceiros, mapaInfParceiros, url, token, codEmp);
+	 				// Verifica se a integração está ativa para esta empresa
+					if (!"S".equals(statusIntegracao)) {
+						System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+						continue; // Pula para a próxima iteração do loop
+					}
 
 	 				iterarEndpoint(mapaInfIdParceiros, mapaInfParceiros, url,
 	 						token, codEmp);
@@ -272,147 +282,118 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 		
 	 		}
 	 	}
+
 	 	
-	 	//NOVO METODO AUXILIAR AQUI
-//	 	public void selecionarTiposFornecedores(JdbcWrapper jdbc, Map<String, BigDecimal> mapaInfIdParceiros,
-//	 			Map<String, BigDecimal> mapaInfParceiros, String url, String token, BigDecimal codEmp) {
-//	 		PreparedStatement pstmt = null;
-//	 		ResultSet rs = null;
-	 //
-//	 		try {
-//	 			jdbc.openSession();
-	 //
-//	 			String query = "SELECT PK, DESCRICAO FROM AD_FORNECEDOR_TIPO";
-//	 			pstmt = jdbc.getPreparedStatement(query);
-	 //
-//	 			rs = pstmt.executeQuery();
-	 //
-//	 			// Itera sobre o ResultSet
-//	 			while (rs.next()) {
-//	 				String sigla = rs.getString("SIGLA"); // Coluna PK
-//	 				String descricao = rs.getString("DESCRICAO"); 
-//	 															
-//	 				String urlComTipoFornecedor = url + "&fornecedor_tipo=" + descricao;
-//	                 
-//	 				System.out.println("ENTROU NO METODO DA  acaoGetFornecedorTiposCarga! ");
-//	 				
-//	 				// Chama o m�todo iterarEndpoint para cada tipo de fornecedor
-//	 				iterarEndpoint(mapaInfIdParceiros, mapaInfParceiros, urlComTipoFornecedor, token, codEmp);
-//	 			}
-	 //
-//	 		} catch (SQLException e) {
-//	 			e.printStackTrace();
-//	 		} catch (Exception e) {
-//	 			e.printStackTrace();
-//	 		} finally {
-//	 			if (rs != null) {
-//	 				try {
-//	 					rs.close();
-//	 				} catch (SQLException e) {
-//	 					e.printStackTrace();
-//	 				}
-//	 			}
-//	 			if (pstmt != null) {
-//	 				try {
-//	 					pstmt.close();
-//	 				} catch (SQLException e) {
-//	 					e.printStackTrace();
-//	 				}
-//	 			}
-//	 		}
-//	 	}
-	 	
-	 	
-	 	//processarFornecedoresPorTipo
-	 	//dentro desse m�todo vai precisar ter 1 select nessa tabela nova e no while desse select da tabela nova vai passar o iterarendpoint.
-	 	/*
-	 	 * ResultSet rs = null;
-	 		List<Object[]> listRet = new ArrayList<>();
-
-	 		try {
-	 			jdbc.openSession();
-	 			String sql = "SELECT p.CODPARC, p.CGC_CPF, "
-	 					+ "a.IDACADWEB, a.codemp " + "FROM TGFPAR p "
-	 					+ "LEFT join AD_IDFORNACAD a "
-	 					+ "on a.codparc = p.codparc " + "where fornecedor = 'S'";
-
-	 			pstmt = jdbc.getPreparedStatement(sql);
-	 			rs = pstmt.executeQuery();
-
-	 			while (rs.next()) {
-	 				Object[] ret = new Object[4];
-	 				ret[0] = rs.getBigDecimal("CODPARC");
-	 				ret[1] = rs.getString("CGC_CPF");
-	 				ret[2] = rs.getString("IDACADWEB");
-	 				ret[3] = rs.getBigDecimal("codemp");
-
-	 				listRet.add(ret);
-	 			}
-
-	 		}
-	 	 */
-
-
-//	 	public void iterarEndpoint(Map<String, BigDecimal> mapaInfIdParceiros,
-//	 			Map<String, BigDecimal> mapaInfParceiros, String url, String token,
-//	 			BigDecimal codEmp, String dataInicio, String dataFim, String idForn) 
-//	 			throws Exception {
-	 //
-	 //
-//	 		try {
-//	 			
-//	 			// Convertendo as Strings para LocalDate
+//	 	public void processDateRange(
+//	 	        Map<String, BigDecimal> mapaInfIdParceiros,
+//	 	        Map<String, BigDecimal> mapaInfParceiros,
+//	 	        String url,
+//	 	        String token,
+//	 	        BigDecimal codEmp,
+//	 	        String dataInicio,
+//	 	        String dataFim,
+//	 	        String idForn,
+//	 	       boolean apenasProfe) throws Exception {
+//
+//	 	    try {
+//	 	        // Convertendo as Strings para LocalDate
 //	 	        LocalDate inicio = LocalDate.parse(dataInicio);
 //	 	        LocalDate fim = LocalDate.parse(dataFim);
-	 //
-//	 	        // Loop para percorrer o intervalo de dias
 //	 	        LocalDate atual = inicio;
-//	 	        
-//	 	        String[] response = null;
-//	 	        
-//	 			while (!atual.isAfter(fim)) {
-//	 				
-//	 				String dataAtual = atual.toString();
-//	 				
-//	 				System.out.println("While de itera��o");
-//	 				
-//	 				if(idForn != null && !idForn.isEmpty()){
-	 //
-//	 					response = apiGet(url
-//	 							+ "/financeiro/clientes/fornecedores?" + "quantidade=0"
-//	 							+ "&dataInicial=" + dataAtual
-//	 							+ " 00:00:00&dataFinal=" + dataAtual + " 23:59:59"
-//	 							+ "&fornecedor=" + idForn
-//	 							,token);
-//	 				}else{
-	 //
-//	 					response = apiGet(url
-//	 							+ "/financeiro/clientes/fornecedores?" + "quantidade=0"
-//	 							+ "&dataInicial=" + dataAtual
-//	 							+ " 00:00:00&dataFinal=" + dataAtual + " 23:59:59"
-//	 							,token);
-//	 				}
-	 //
-//	 				int status = Integer.parseInt(response[0]);
-//	 				System.out.println("Status teste: " + status);
-	 //
-//	 				String responseString = response[1];
-//	 				System.out.println("response string: " + responseString);
-	 //
-//	 				cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros,
-//	 						response, codEmp);
-//	 				
-//	 				// Incrementa para o proximo dia
-//	 				atual = atual.plusDays(1);
-//	 			}
-//	 			
-	 //
-//	 		} catch (Exception e) {
-//	 			e.printStackTrace();
-//	 		}
+//
+//	 	        while (!atual.isAfter(fim)) {
+//	 	            String dataAtual = atual.toString();
+//	 	            
+//	 	            // Preparar as datas completas para o dia atual
+//	 	            String dataInicialCompleta = dataAtual + " 00:00:00";
+//	 	            String dataFinalCompleta = dataAtual + " 23:59:59";
+//
+//	 	            // Codificar os parâmetros
+//	 	            String dataInicialEncoded = URLEncoder.encode(dataInicialCompleta, "UTF-8");
+//	 	            String dataFinalEncoded = URLEncoder.encode(dataFinalCompleta, "UTF-8");
+//
+//	 	            // Lista para armazenar todos os registros do dia
+//	 	            JSONArray registrosDoDia = new JSONArray();
+//	 	            int pagina = 1;
+//	 	            boolean temMaisRegistros = true;
+//
+//	 	            while (temMaisRegistros) {
+//	 	                // Construir a URL para a página atual
+//	 	                StringBuilder urlBuilder = new StringBuilder();
+//	 	                urlBuilder.append(url.trim())
+//	 	                        .append("/financeiro/clientes/fornecedores")
+//	 	                        .append("?pagina=").append(pagina)
+//	 	                        .append("&quantidade=100")
+//	 	                        .append("&dataInicial=").append(dataInicialEncoded)
+//	 	                        .append("&dataFinal=").append(dataFinalEncoded);
+//
+//	 	               // Adicionar parâmetro de fornecedor se estiver presente
+//	 	                if (idForn != null && !idForn.isEmpty()) {
+//	 	                    String fornecedorEncoded = URLEncoder.encode(idForn, "UTF-8");      
+//	 	                    urlBuilder.append("&fornecedor=").append(fornecedorEncoded);
+//	 	                }
+//	 	                
+//	 	                
+//	 	               if (apenasProfe) {
+//	 	                    urlBuilder.append("&fornecedor_tipo=PROFE");
+//	 	                    System.out.println("Filtrando apenas professores (PROFE)");
+//	 	                }
+//	 	                
+//	 	       
+//	 	                String urlCompleta = urlBuilder.toString();
+//	 	                System.out.println("URL para fornecedores (data: " + dataAtual + ", página " + pagina + "): " + urlCompleta);
+//
+//	 	                // Fazer a requisição
+//	 	                String[] response = apiGet2(urlCompleta, token);
+//	 	                int status = Integer.parseInt(response[0]);
+//
+//	 	                if (status == 200) {
+//	 	                    JSONArray paginaAtual = new JSONArray(response[1]);
+//	 	                    
+//	 	                    // Adicionar registros ao array acumulado
+//	 	                    for (int i = 0; i < paginaAtual.length(); i++) {
+//	 	                        registrosDoDia.put(paginaAtual.getJSONObject(i));
+//	 	                    }
+//	 	                    
+//	 	                    // Verificar se é a última página
+//	 	                    if (paginaAtual.length() < 100) {
+//	 	                        temMaisRegistros = false;
+//	 	                    } else {
+//	 	                        pagina++;
+//	 	                    }
+//	 	                    
+//	 	                    System.out.println("Data " + dataAtual + " - Página " + pagina + ": " + 
+//	 	                                     paginaAtual.length() + " registros. Total acumulado: " + 
+//	 	                                     registrosDoDia.length());
+//	 	                } else {
+//	 	                    throw new Exception(String.format(
+//	 	                        "Erro na requisição de fornecedores. Status: %d. Resposta: %s. URL: %s",
+//	 	                        status, response[1], urlCompleta
+//	 	                    ));
+//	 	                }
+//	 	            }
+//
+//	 	            // Processar todos os registros do dia atual
+//	 	            String[] responseArray = new String[]{String.valueOf(200), registrosDoDia.toString()};
+//	 	            
+//	 	            
+//	 	            
+//	 	            cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros, responseArray, codEmp);
+//
+//	 	            // Incrementar para o próximo dia
+//	 	            atual = atual.plusDays(1);
+//	 	            System.out.println("Total de registros processados para " + dataAtual + ": " + registrosDoDia.length());
+//	 	        }
+//
+//	 	    } catch (Exception e) {
+//	 	        System.err.println("Erro ao processar período " + dataInicio + " até " + dataFim + ": " + e.getMessage());
+//	 	        e.printStackTrace();
+//	 	        throw e;
+//	 	    }
 //	 	}
 	 	
-	 	public void processDateRange(
+	 // Method to process suppliers by months instead of days to reduce API calls
+	 	public void processDateRangeByMonthsForSuppliers(
 	 	        Map<String, BigDecimal> mapaInfIdParceiros,
 	 	        Map<String, BigDecimal> mapaInfParceiros,
 	 	        String url,
@@ -420,49 +401,100 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	        BigDecimal codEmp,
 	 	        String dataInicio,
 	 	        String dataFim,
-	 	        String idForn) throws Exception {
+	 	        String idForn,
+	 	        boolean apenasProfe) throws Exception {
+
+	 	    // Converter strings de data para objetos LocalDate
+	 	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+	 	    LocalDate inicio = LocalDate.parse(dataInicio, formatter);
+	 	    LocalDate fim = LocalDate.parse(dataFim, formatter);
+
+	 	    // Dividir o intervalo em períodos mensais
+	 	    LocalDate periodoInicio = inicio;
+	 	    while (periodoInicio.isBefore(fim) || periodoInicio.isEqual(fim)) {
+	 	        // Definir o fim do período atual (fim do mês ou a data final)
+	 	        LocalDate periodoFim = periodoInicio.plusMonths(1).withDayOfMonth(1).minusDays(1);
+	 	        if (periodoFim.isAfter(fim)) {
+	 	            periodoFim = fim;
+	 	        }
+
+	 	        // Processar este período (agora usando semanas em vez de dias para reduzir chamadas)
+	 	        System.out.println("Processando período: " + periodoInicio + " até " + periodoFim);
+	 	        processDateRangeForSuppliers(
+	 	            mapaInfIdParceiros,
+	 	            mapaInfParceiros,
+	 	            url,
+	 	            token,
+	 	            codEmp,
+	 	            periodoInicio.format(formatter),
+	 	            periodoFim.format(formatter),
+	 	            idForn,
+	 	            apenasProfe
+	 	        );
+
+	 	        // Avançar para o próximo mês
+	 	        periodoInicio = periodoInicio.plusMonths(1).withDayOfMonth(1);
+	 	    }
+	 	}
+
+	 	// Método melhorado para processar fornecedores por período (sem dividir por dias)
+	 	public void processDateRangeForSuppliers(
+	 	        Map<String, BigDecimal> mapaInfIdParceiros,
+	 	        Map<String, BigDecimal> mapaInfParceiros,
+	 	        String url,
+	 	        String token,
+	 	        BigDecimal codEmp,
+	 	        String dataInicio,
+	 	        String dataFim,
+	 	        String idForn,
+	 	        boolean apenasProfe) throws Exception {
 
 	 	    try {
-	 	        // Convertendo as Strings para LocalDate
-	 	        LocalDate inicio = LocalDate.parse(dataInicio);
-	 	        LocalDate fim = LocalDate.parse(dataFim);
-	 	        LocalDate atual = inicio;
+	 	        // Preparar as datas completas para o período
+	 	        String dataInicialCompleta = dataInicio + " 00:00:00";
+	 	        String dataFinalCompleta = dataFim + " 23:59:59";
 
-	 	        while (!atual.isAfter(fim)) {
-	 	            String dataAtual = atual.toString();
+	 	        // Codificar os parâmetros
+	 	        String dataInicialEncoded = URLEncoder.encode(dataInicialCompleta, "UTF-8");
+	 	        String dataFinalEncoded = URLEncoder.encode(dataFinalCompleta, "UTF-8");
+
+	 	        // Lista para armazenar todos os registros do período
+	 	        JSONArray todosRegistros = new JSONArray();
+	 	        int pagina = 1;
+	 	        boolean temMaisRegistros = true;
+	 	        
+	 	        // Parâmetros de retry mais agressivos
+	 	        int tentativas = 0;
+	 	        final int MAX_TENTATIVAS = 5; // Aumentado para 5 tentativas
+	 	        final long TEMPO_ESPERA_BASE = 10000; // 10 segundos de base
+	 	        final long TEMPO_ESPERA_MAX = 300000; // Máximo de 5 minutos de espera
+	 	        final Random random = new Random(); // Para adicionar jitter ao tempo de espera
+
+	 	        while (temMaisRegistros) {
+	 	            // Construir a URL para a página atual
+	 	            StringBuilder urlBuilder = new StringBuilder();
+	 	            urlBuilder.append(url.trim())
+	 	                    .append("/financeiro/clientes/fornecedores")
+	 	                    .append("?pagina=").append(pagina)
+	 	                    .append("&quantidade=100")
+	 	                    .append("&dataInicial=").append(dataInicialEncoded)
+	 	                    .append("&dataFinal=").append(dataFinalEncoded);
+
+	 	            // Adicionar parâmetro de fornecedor se estiver presente
+	 	            if (idForn != null && !idForn.isEmpty()) {
+	 	                String fornecedorEncoded = URLEncoder.encode(idForn, "UTF-8");      
+	 	                urlBuilder.append("&fornecedor=").append(fornecedorEncoded);
+	 	            }
 	 	            
-	 	            // Preparar as datas completas para o dia atual
-	 	            String dataInicialCompleta = dataAtual + " 00:00:00";
-	 	            String dataFinalCompleta = dataAtual + " 23:59:59";
+	 	            if (apenasProfe) {
+	 	                urlBuilder.append("&fornecedor_tipo=PROFE");
+	 	                System.out.println("Filtrando apenas professores (PROFE)");
+	 	            }
+	 	            
+	 	            String urlCompleta = urlBuilder.toString();
+	 	            System.out.println("URL para fornecedores (período: " + dataInicio + " a " + dataFim + ", página " + pagina + "): " + urlCompleta);
 
-	 	            // Codificar os parâmetros
-	 	            String dataInicialEncoded = URLEncoder.encode(dataInicialCompleta, "UTF-8");
-	 	            String dataFinalEncoded = URLEncoder.encode(dataFinalCompleta, "UTF-8");
-
-	 	            // Lista para armazenar todos os registros do dia
-	 	            JSONArray registrosDoDia = new JSONArray();
-	 	            int pagina = 1;
-	 	            boolean temMaisRegistros = true;
-
-	 	            while (temMaisRegistros) {
-	 	                // Construir a URL para a página atual
-	 	                StringBuilder urlBuilder = new StringBuilder();
-	 	                urlBuilder.append(url.trim())
-	 	                        .append("/financeiro/clientes/fornecedores")
-	 	                        .append("?pagina=").append(pagina)
-	 	                        .append("&quantidade=100")
-	 	                        .append("&dataInicial=").append(dataInicialEncoded)
-	 	                        .append("&dataFinal=").append(dataFinalEncoded);
-
-	 	                // Adicionar parâmetro de fornecedor se estiver presente
-	 	                if (idForn != null && !idForn.isEmpty()) {
-	 	                    String fornecedorEncoded = URLEncoder.encode(idForn, "UTF-8");      
-	 	                    urlBuilder.append("&fornecedor=").append(fornecedorEncoded);
-	 	                }
-
-	 	                String urlCompleta = urlBuilder.toString();
-	 	                System.out.println("URL para fornecedores (data: " + dataAtual + ", página " + pagina + "): " + urlCompleta);
-
+	 	            try {
 	 	                // Fazer a requisição
 	 	                String[] response = apiGet2(urlCompleta, token);
 	 	                int status = Integer.parseInt(response[0]);
@@ -470,39 +502,115 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	                if (status == 200) {
 	 	                    JSONArray paginaAtual = new JSONArray(response[1]);
 	 	                    
-	 	                    // Adicionar registros ao array acumulado
-	 	                    for (int i = 0; i < paginaAtual.length(); i++) {
-	 	                        registrosDoDia.put(paginaAtual.getJSONObject(i));
-	 	                    }
-	 	                    
-	 	                    // Verificar se é a última página
-	 	                    if (paginaAtual.length() < 100) {
+	 	                    // Verificar se há registros nesta página
+	 	                    if (paginaAtual.length() == 0) {
+	 	                        // Página vazia, parar o processamento
 	 	                        temMaisRegistros = false;
+	 	                        System.out.println("Página " + pagina + " vazia. Finalizando coleta de dados.");
 	 	                    } else {
-	 	                        pagina++;
+	 	                        // Adicionar registros ao array acumulado
+	 	                        for (int i = 0; i < paginaAtual.length(); i++) {
+	 	                            todosRegistros.put(paginaAtual.getJSONObject(i));
+	 	                        }
+	 	                        
+	 	                        // Verificar se é a última página (menos de 100 registros)
+	 	                        if (paginaAtual.length() < 100) {
+	 	                            temMaisRegistros = false;
+	 	                            System.out.println("Última página encontrada com " + paginaAtual.length() + " registros.");
+	 	                        } else {
+	 	                            // Avançar para a próxima página
+	 	                            pagina++;
+	 	                            System.out.println("Página " + (pagina-1) + " completa com 100 registros. Avançando para página " + pagina);
+	 	                            
+	 	                            // Pausa estratégica entre páginas para evitar 429
+	 	                            Thread.sleep(2000 + random.nextInt(1000));
+	 	                        }
+	 	                        
+	 	                        System.out.println("Período " + dataInicio + " a " + dataFim + " - Página " + (pagina-1) + ": " + 
+	 	                                        paginaAtual.length() + " registros. Total acumulado: " + 
+	 	                                        todosRegistros.length());
 	 	                    }
-	 	                    
-	 	                    System.out.println("Data " + dataAtual + " - Página " + pagina + ": " + 
-	 	                                     paginaAtual.length() + " registros. Total acumulado: " + 
-	 	                                     registrosDoDia.length());
+	 	                    // Resetar o contador de tentativas após sucesso
+	 	                    tentativas = 0;
+	 	                } else if (status == 404) {
+	 	                    // Assumindo que a API retorna 404 quando a página não existe
+	 	                    temMaisRegistros = false;
+	 	                    System.out.println("Página " + pagina + " não encontrada (404). Finalizando coleta de dados.");
+	 	                } else if (status == 429) {
+	 	                    // Too Many Requests - implementar retry com backoff exponencial e jitter
+	 	                    tentativas++;
+	 	                    if (tentativas <= MAX_TENTATIVAS) {
+	 	                        // Calcular tempo de espera com backoff exponencial
+	 	                        long tempoEspera = Math.min(
+	 	                            TEMPO_ESPERA_MAX,
+	 	                            TEMPO_ESPERA_BASE * (long)Math.pow(2, tentativas-1) + random.nextInt(3000)
+	 	                        );
+	 	                        
+	 	                        System.out.println("Erro 429 (Too Many Requests). Tentativa " + tentativas + 
+	 	                                         " de " + MAX_TENTATIVAS + ". Código: CORE_E01128. Aguardando " + 
+	 	                                         (tempoEspera / 1000) + " segundos.");
+	 	                        
+	 	                        // Registrar detalhes específicos do erro 429
+	 	                        System.out.println("Detalhes da requisição: URL=" + urlCompleta);
+	 	                        System.out.println("Resposta do servidor: " + response[1]);
+	 	                        
+	 	                        Thread.sleep(tempoEspera);
+	 	                        continue; // Tenta novamente sem incrementar a página
+	 	                    } else {
+	 	                        System.err.println("Erro 429 (Too Many Requests) persistente após " + 
+	 	                                        MAX_TENTATIVAS + " tentativas. URL: " + urlCompleta);
+	 	                        
+	 	                        // Se muitas tentativas falharam, mas temos alguns dados, podemos processar o que temos
+	 	                        if (todosRegistros.length() > 0) {
+	 	                            System.out.println("Processando os " + todosRegistros.length() + 
+	 	                                             " registros obtidos antes do erro persistente 429...");
+	 	                            break; // Sai do loop para processar o que temos
+	 	                        }
+	 	                        
+	 	                        throw new Exception(String.format(
+	 	                            "Erro 429 (Too Many Requests) persistente após %d tentativas. Código: CORE_E01128. URL: %s",
+	 	                            MAX_TENTATIVAS, urlCompleta
+	 	                        ));
+	 	                    }
 	 	                } else {
 	 	                    throw new Exception(String.format(
 	 	                        "Erro na requisição de fornecedores. Status: %d. Resposta: %s. URL: %s",
 	 	                        status, response[1], urlCompleta
 	 	                    ));
 	 	                }
+	 	            } catch (Exception e) {
+	 	                // Verificar se é um erro de rede ou temporário
+	 	                if (e.getMessage().contains("timeout") || 
+	 	                    e.getMessage().contains("connection") ||
+	 	                    e.getMessage().contains("reset")) {
+	 	                    
+	 	                    tentativas++;
+	 	                    if (tentativas <= MAX_TENTATIVAS) {
+	 	                        long tempoEspera = Math.min(
+	 	                            TEMPO_ESPERA_MAX,
+	 	                            TEMPO_ESPERA_BASE * (long)Math.pow(2, tentativas-1) + random.nextInt(3000)
+	 	                        );
+	 	                        
+	 	                        System.out.println("Erro de conexão. Tentativa " + tentativas + 
+	 	                                         " de " + MAX_TENTATIVAS + ". Aguardando " + 
+	 	                                         (tempoEspera / 1000) + " segundos.");
+	 	                        Thread.sleep(tempoEspera);
+	 	                        continue; // Tenta novamente sem incrementar a página
+	 	                    }
+	 	                }
+	 	                // Re-lançar a exceção para tratamento externo
+	 	                throw e;
 	 	            }
+	 	        }
 
-	 	            // Processar todos os registros do dia atual
-	 	            String[] responseArray = new String[]{String.valueOf(200), registrosDoDia.toString()};
-	 	            
-	 	            
-	 	            
+	 	        // Verificar se foram encontrados registros
+	 	        if (todosRegistros.length() == 0) {
+	 	            System.out.println("Nenhum registro de fornecedor encontrado para o período " + dataInicio + " a " + dataFim);
+	 	        } else {
+	 	            // Processar todos os registros do período
+	 	            String[] responseArray = new String[]{String.valueOf(200), todosRegistros.toString()};
 	 	            cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros, responseArray, codEmp);
-
-	 	            // Incrementar para o próximo dia
-	 	            atual = atual.plusDays(1);
-	 	            System.out.println("Total de registros processados para " + dataAtual + ": " + registrosDoDia.length());
+	 	            System.out.println("Total de registros processados para o período " + dataInicio + " a " + dataFim + ": " + todosRegistros.length());
 	 	        }
 
 	 	    } catch (Exception e) {
@@ -544,225 +652,444 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			e.printStackTrace();
 	 		}
 	 	}
-
+	 	
 	 	public void cadastrarFornecedor(Map<String, BigDecimal> mapaInfIdParceiros,
-	 			Map<String, BigDecimal> mapaInfParceiros, String[] response,
-	 			BigDecimal codEmp) {
-	 		System.out.println("Cadastro principal");
-	 		
-	 		EnviromentUtils util = new EnviromentUtils();
-	 		
-	 		String fornecedorId = "";
-	 		
-	 		try {
-	 			
-	 			String responseString = response[1];
-	 			String status = response[0];
-	 			
-	 			if(status.equalsIgnoreCase("200")){
+	 	        Map<String, BigDecimal> mapaInfParceiros, String[] response,
+	 	        BigDecimal codEmp) {
+	 	    System.out.println("Cadastro principal");
+	 	    
+	 	    EnviromentUtils util = new EnviromentUtils();
+	 	    
+	 	    String fornecedorId = "";
+	 	    
+	 	    try {
+	 	        
+	 	        String responseString = response[1];
+	 	        String status = response[0];
+	 	        
+	 	        if(status.equalsIgnoreCase("200")){
 
-	 				JsonParser parser = new JsonParser();
-	 				JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
-	 				int count = 0;
-	 				System.out.println("contagem: " + count);
-	 				
-	 				for (JsonElement jsonElement : jsonArray) {
-	 					System.out.println("contagem2: " + count);
-	 					JsonObject jsonObject = jsonElement.getAsJsonObject();
+	 	            JsonParser parser = new JsonParser();
+	 	            JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
+	 	            int count = 0;
+	 	            System.out.println("contagem: " + count);
+	 	            
+	 	            for (JsonElement jsonElement : jsonArray) {
+	 	                System.out.println("contagem2: " + count);
+	 	                JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-	 					String fornecedorTipo = jsonObject.get("fornecedor_tipo")
-	 							.isJsonNull() ? null : jsonObject
-	 							.get("fornecedor_tipo").getAsString();
+	 	                // Extração dos dados do JSON
+	 	                String fornecedorTipo = jsonObject.get("fornecedor_tipo")
+	 	                        .isJsonNull() ? null : jsonObject
+	 	                        .get("fornecedor_tipo").getAsString();
 
-	 					fornecedorId = jsonObject.get("fornecedor_id")
-	 							.isJsonNull() ? null : jsonObject.get("fornecedor_id")
-	 							.getAsString();
+	 	                fornecedorId = jsonObject.get("fornecedor_id")
+	 	                        .isJsonNull() ? null : jsonObject.get("fornecedor_id")
+	 	                        .getAsString();
 
-	 					String fornecedorNome = jsonObject.get("fornecedor_nome")
-	 							.isJsonNull() ? null : jsonObject
-	 							.get("fornecedor_nome").getAsString();
+	 	                String fornecedorNome = jsonObject.get("fornecedor_nome")
+	 	                        .isJsonNull() ? null : jsonObject
+	 	                        .get("fornecedor_nome").getAsString();
 
-	 					String fornecedorNomeFantasia = jsonObject.get(
-	 							"fornecedor_nomefantasia").isJsonNull() ? null
-	 							: jsonObject.get("fornecedor_nomefantasia")
-	 									.getAsString();
-	 					if (fornecedorNomeFantasia == null) {
-	 						fornecedorNomeFantasia = fornecedorNome;
-	 					}
-	 					String fornecedorEndereco = jsonObject.get(
-	 							"fornecedor_endereco").isJsonNull() ? null : jsonObject
-	 							.get("fornecedor_endereco").getAsString();
-	 					
-	 					if (fornecedorEndereco == null) {
-	 						/*
-	 						 * insertLogIntegracao(
-	 						 * "Fornecedor com vari�vel Endere�o nula, Endere�o cadastrado como vazio: "
-	 						 * , "Aviso", fornecedorNome);
-	 						 */
-	 					}
-	 					
-	 					String fornecedorBairro = jsonObject.get("fornecedor_bairro")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_bairro").getAsString();
-	 					
-	 					if (fornecedorBairro == null) {
-	 						/*
-	 						 * insertLogIntegracao(
-	 						 * "Fornecedor com vari�vel Bairro nulo, Bairro cadastrado como vazio: "
-	 						 * , "Aviso", fornecedorNome);
-	 						 */
-	 					}
-	 					String fornecedorCidade = jsonObject.get("fornecedor_cidade")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_cidade").getAsString();
-	 					if (fornecedorCidade == null) {
-	 						/*
-	 						 * insertLogIntegracao(
-	 						 * "Fornecedor com vari�vel Cidade nulo, n�o ser� cadastrado: "
-	 						 * , "Aviso", fornecedorNome);
-	 						 */
-	 					}
-	 					String fornecedorUf = jsonObject.get("fornecedor_uf")
-	 							.isJsonNull() ? null : jsonObject.get("fornecedor_uf")
-	 							.getAsString();
+	 	                String fornecedorNomeFantasia = jsonObject.get(
+	 	                        "fornecedor_nomefantasia").isJsonNull() ? null
+	 	                        : jsonObject.get("fornecedor_nomefantasia")
+	 	                                .getAsString();
+	 	                if (fornecedorNomeFantasia == null) {
+	 	                    fornecedorNomeFantasia = fornecedorNome;
+	 	                }
+	 	                
+	 	                String fornecedorEndereco = jsonObject.get(
+	 	                        "fornecedor_endereco").isJsonNull() ? null : jsonObject
+	 	                        .get("fornecedor_endereco").getAsString();
+	 	                
+	 	                String fornecedorBairro = jsonObject.get("fornecedor_bairro")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_bairro").getAsString();
+	 	                
+	 	                String fornecedorCidade = jsonObject.get("fornecedor_cidade")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_cidade").getAsString();
+	 	                
+	 	                String fornecedorUf = jsonObject.get("fornecedor_uf")
+	 	                        .isJsonNull() ? null : jsonObject.get("fornecedor_uf")
+	 	                        .getAsString();
 
-	 					String fornecedorCep = jsonObject.get("fornecedor_cep")
-	 							.isJsonNull() ? null : jsonObject.get("fornecedor_cep")
-	 							.getAsString();
+	 	                String fornecedorCep = jsonObject.get("fornecedor_cep")
+	 	                        .isJsonNull() ? null : jsonObject.get("fornecedor_cep")
+	 	                        .getAsString();
 
-	 					String fornecedorInscMunicipal = jsonObject.get(
-	 							"fornecedor_isncmunicipal").isJsonNull() ? null
-	 							: jsonObject.get("fornecedor_isncmunicipal")
-	 									.getAsString();
+	 	                String fornecedorInscMunicipal = jsonObject.get(
+	 	                        "fornecedor_isncmunicipal").isJsonNull() ? null
+	 	                        : jsonObject.get("fornecedor_isncmunicipal")
+	 	                                .getAsString();
 
-	 					String fornecedorInscestadual = jsonObject.get(
-	 							"fornecedor_inscestadual").isJsonNull() ? null
-	 							: jsonObject.get("fornecedor_inscestadual")
-	 									.getAsString();
+	 	                String fornecedorInscestadual = jsonObject.get(
+	 	                        "fornecedor_inscestadual").isJsonNull() ? null
+	 	                        : jsonObject.get("fornecedor_inscestadual")
+	 	                                .getAsString();
 
-	 					String fornecedorFone1 = jsonObject.get("fornecedor_fone1")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_fone1").getAsString();
+	 	                String fornecedorFone1 = jsonObject.get("fornecedor_fone1")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_fone1").getAsString();
 
-	 					String fornecedorFone2 = jsonObject.get("fornecedor_fone2")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_fone2").getAsString();
+	 	                String fornecedorFone2 = jsonObject.get("fornecedor_fone2")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_fone2").getAsString();
 
-	 					String fornecedorFax = jsonObject.get("fornecedor_fax")
-	 							.isJsonNull() ? null : jsonObject.get("fornecedor_fax")
-	 							.getAsString();
+	 	                String fornecedorFax = jsonObject.get("fornecedor_fax")
+	 	                        .isJsonNull() ? null : jsonObject.get("fornecedor_fax")
+	 	                        .getAsString();
 
-	 					String fornecedorCelular = jsonObject.get("fornecedor_celular")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_celular").getAsString();
+	 	                String fornecedorCelular = jsonObject.get("fornecedor_celular")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_celular").getAsString();
 
-	 					String fornecedorContato = jsonObject.get("fornecedor_contato")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_contato").getAsString();
+	 	                String fornecedorContato = jsonObject.get("fornecedor_contato")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_contato").getAsString();
 
-	 					String fornecedorCpfcnpj = jsonObject.get("fornecedor_cpfcnpj")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_cpfcnpj").getAsString();
-	 					if (fornecedorCpfcnpj == null) {
-	 						/*
-	 						 * insertLogIntegracao(
-	 						 * "Fornecedor com vari�vel CpfCnpj nulo, n�o ser� cadastrado: "
-	 						 * , "Aviso", fornecedorNome);
-	 						 */
-	 					}
-	 					String fornecedorEmail = jsonObject.get("fornecedor_email")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_email").getAsString();
+	 	                String fornecedorCpfcnpj = jsonObject.get("fornecedor_cpfcnpj")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_cpfcnpj").getAsString();
+	 	                
+	 	                String fornecedorEmail = jsonObject.get("fornecedor_email")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_email").getAsString();
 
-	 					String fornecedorHomepage = jsonObject.get(
-	 							"fornecedor_homepage").isJsonNull() ? null : jsonObject
-	 							.get("fornecedor_homepage").getAsString();
+	 	                String fornecedorHomepage = jsonObject.get(
+	 	                        "fornecedor_homepage").isJsonNull() ? null : jsonObject
+	 	                        .get("fornecedor_homepage").getAsString();
 
-	 					String fornecedorAtivo = jsonObject.get("fornecedor_ativo")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"fornecedor_ativo").getAsString();
-	 					if (fornecedorAtivo == null) {
-	 						/*
-	 						 * insertLogIntegracao(
-	 						 * "Fornecedor com vari�vel Ativo nulo, n�o ser� cadastrado: "
-	 						 * , "Aviso", fornecedorNome);
-	 						 */
-	 					}
-	 					String dataAtualizacao = jsonObject.get("data_atualizacao")
-	 							.isJsonNull() ? null : jsonObject.get(
-	 							"data_atualizacao").getAsString();
-	 					if ((fornecedorCpfcnpj != null) && (fornecedorAtivo != null)
-	 							&& (fornecedorCidade != null)) {
-	 						
-	 						System.out.println("Primeiro if de valida��o de dados");
-	 						
-	 						boolean fornecedor = mapaInfParceiros.get(fornecedorCpfcnpj) == null ? true : false;
-	 						
-	 						System.out.println("Validacao parceiro: " + fornecedor);
-	 						
-	 						if (fornecedor) {
-	 							
-	 							System.out.println("Entrou no cadastro");
-	 							
-	 							insertFornecedor(
-	 									fornecedorTipo, fornecedorId, fornecedorNome,
-	 									fornecedorNomeFantasia, fornecedorEndereco,
-	 									fornecedorBairro, fornecedorCidade,
-	 									fornecedorUf, fornecedorCep,
-	 									fornecedorInscMunicipal, fornecedorCpfcnpj,
-	 									fornecedorHomepage, fornecedorAtivo,
-	 									dataAtualizacao, fornecedorInscestadual,
-	 									fornecedorFone1, fornecedorFone2,
-	 									fornecedorFax, fornecedorCelular,
-	 									fornecedorContato, fornecedorNome,
-	 									fornecedorEmail, codEmp);
+	 	                String fornecedorAtivo = jsonObject.get("fornecedor_ativo")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "fornecedor_ativo").getAsString();
+	 	                
+	 	                String dataAtualizacao = jsonObject.get("data_atualizacao")
+	 	                        .isJsonNull() ? null : jsonObject.get(
+	 	                        "data_atualizacao").getAsString();
+	 	                
+	 	              
+	 	                System.out.println("DEBUG PARA FORNECEDOR: " + fornecedorId);
+	 	                System.out.println("Código: " + fornecedorId);
+	 	                System.out.println("Descrição (Nome): " + fornecedorNome);
+	 	                System.out.println("CPF/CNPJ: " + fornecedorCpfcnpj);
+	 	                System.out.println("Cidade: " + fornecedorCidade);
+	 	                
+	 	                // Validação dos campos obrigatórios (ID, Nome, CPF/CNPJ e Cidade)
+	 	                boolean dadosValidos = validarCamposObrigatorios(fornecedorId, fornecedorNome, 
+	 	                        fornecedorCpfcnpj, fornecedorCidade);
+	 	                
+	 	                if (dadosValidos) {
+	 	                    System.out.println("Validação de dados: OK - campos obrigatórios preenchidos");
+	 	                    
+	 	                    boolean fornecedor = mapaInfParceiros.get(fornecedorCpfcnpj) == null ? true : false;
+	 	                    
+	 	                    System.out.println("Validacao parceiro: " + fornecedor);
+	 	                    
+	 	                    if (fornecedor) {
+	 	                        System.out.println("Entrou no cadastro");
+	 	                        
+	 	                        insertFornecedor(
+	 	                                fornecedorTipo, fornecedorId, fornecedorNome,
+	 	                                fornecedorNomeFantasia, fornecedorEndereco,
+	 	                                fornecedorBairro, fornecedorCidade,
+	 	                                fornecedorUf, fornecedorCep,
+	 	                                fornecedorInscMunicipal, fornecedorCpfcnpj,
+	 	                                fornecedorHomepage, fornecedorAtivo,
+	 	                                dataAtualizacao, fornecedorInscestadual,
+	 	                                fornecedorFone1, fornecedorFone2,
+	 	                                fornecedorFax, fornecedorCelular,
+	 	                                fornecedorContato, fornecedorNome,
+	 	                                fornecedorEmail, codEmp);
 
-	 							System.out.println("Fornecedor cadastrado");
-	 							
-	 						} else {
-	 							boolean IdFornecedor = mapaInfIdParceiros.get(fornecedorId + "###" + fornecedorCpfcnpj + "###" + codEmp)
-	 									== null ? true : false;
-	 							//getIfIdFornecedorExist(fornecedorCpfcnpj, fornecedorId, codEmp);
-	 							
-	 							System.out.println("Validacao id fornecedor: " + IdFornecedor);
-	 							
-	 							if (IdFornecedor) {
-	 								insertIdForn(fornecedorId, fornecedorCpfcnpj,
-	 										codEmp);
-	 							}
-
-	 						}
-	 						
-	 						count++;
-	 						
-	 					}else{
-	 						
-	 						selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Fornecedor Nao Sera Cadastrado, Informacoes Nulas ou invalidas', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 						
-	 						/*util.inserirLog("Fornecedor N�o Ser� Cadastrado, Informa��es Nulas ou invalidas", "Aviso"
-	 								, fornecedorId, codEmp);*/
-	 					}
-	 				}
-	 			}else{
-
-	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Status de Retorno da API Diferente de Sucesso, Status Retornado: "+status+"', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 				
-	 			}
-	 			
-	 		} catch (Exception e) {
-	 			e.printStackTrace();
-	 			try {
-	 				
-	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro no chamado do endpoint: " + e.getMessage()+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 				
-	 				/*util.inserirLog(
-	 						"Erro no chamado do endpoint: " + e.getMessage(),
-	 						"Erro", fornecedorId, codEmp);*/
-	 			} catch (Exception e1) {
-	 				e1.printStackTrace();
-	 			}
-	 		}
+	 	                        System.out.println("Fornecedor cadastrado");
+	 	                        
+	 	                    } else {
+	 	                        boolean IdFornecedor = mapaInfIdParceiros.get(fornecedorId + "###" + fornecedorCpfcnpj + "###" + codEmp)
+	 	                                == null ? true : false;
+	 	                        
+	 	                        System.out.println("Validacao id fornecedor: " + IdFornecedor);
+	 	                        
+	 	                        if (IdFornecedor) {
+	 	                            insertIdForn(fornecedorId, fornecedorCpfcnpj,
+	 	                                    codEmp);
+	 	                        }
+	 	                    }
+	 	                    
+	 	                    count++;
+	 	                    
+	 	                } else {
+	 	                    registrarErroCamposObrigatorios(fornecedorId, fornecedorNome, 
+	 	                            fornecedorCpfcnpj, fornecedorCidade, codEmp);
+	 	                }
+	 	            }
+	 	        } else {
+	 	            selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Status de Retorno da API Diferente de Sucesso, Status Retornado: "+status+"', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+	 	        }
+	 	        
+	 	    } catch (Exception e) {
+	 	        e.printStackTrace();
+	 	        try {
+	 	            selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro no chamado do endpoint: " + e.getMessage()+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+	 	        } catch (Exception e1) {
+	 	            e1.printStackTrace();
+	 	        }
+	 	    }
 	 	}
+
+	 	/**
+	 	 * Valida se os campos obrigatórios estão preenchidos
+	 	 */
+	 	private boolean validarCamposObrigatorios(String fornecedorId, String fornecedorNome, 
+	 	        String fornecedorCpfcnpj, String fornecedorCidade) {
+	 	    
+	 	    return fornecedorId != null && !fornecedorId.trim().isEmpty() && 
+	 	           fornecedorNome != null && !fornecedorNome.trim().isEmpty() && 
+	 	           fornecedorCpfcnpj != null && !fornecedorCpfcnpj.trim().isEmpty() &&
+	 	           fornecedorCidade != null && !fornecedorCidade.trim().isEmpty();
+	 	}
+
+	 	/**
+	 	 * Registra as mensagens de erro para campos obrigatórios não preenchidos
+	 	 */
+	 	private void registrarErroCamposObrigatorios(String fornecedorId, String fornecedorNome, 
+	 	        String fornecedorCpfcnpj, String fornecedorCidade, BigDecimal codEmp) {
+	 	    
+	 	    System.out.println("PROBLEMA DETECTADO: Fornecedor não será cadastrado devido a informações essenciais ausentes.");
+	 	    
+	 	    if (fornecedorId == null || fornecedorId.trim().isEmpty()) 
+	 	        System.out.println("- Código (fornecedorId) está vazio ou NULL");
+	 	    
+	 	    if (fornecedorNome == null || fornecedorNome.trim().isEmpty()) 
+	 	        System.out.println("- Descrição (fornecedorNome) está vazio ou NULL");
+	 	    
+	 	    if (fornecedorCpfcnpj == null || fornecedorCpfcnpj.trim().isEmpty()) 
+	 	        System.out.println("- CPF/CNPJ (fornecedorCpfcnpj) está vazio ou NULL");
+	 	    
+	 	    if (fornecedorCidade == null || fornecedorCidade.trim().isEmpty()) 
+	 	        System.out.println("- Cidade (fornecedorCidade) está vazio ou NULL");
+	 	    
+	 	    selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Fornecedor Nao Sera Cadastrado, Informacoes Nulas ou invalidas (falta campo obrigatório)', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+	 	}
+
+//	 	public void cadastrarFornecedor(Map<String, BigDecimal> mapaInfIdParceiros,
+//	 			Map<String, BigDecimal> mapaInfParceiros, String[] response,
+//	 			BigDecimal codEmp) {
+//	 		System.out.println("Cadastro principal");
+//	 		
+//	 		EnviromentUtils util = new EnviromentUtils();
+//	 		
+//	 		String fornecedorId = "";
+//	 		
+//	 		try {
+//	 			
+//	 			String responseString = response[1];
+//	 			String status = response[0];
+//	 			
+//	 			if(status.equalsIgnoreCase("200")){
+//
+//	 				JsonParser parser = new JsonParser();
+//	 				JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
+//	 				int count = 0;
+//	 				System.out.println("contagem: " + count);
+//	 				
+//	 				for (JsonElement jsonElement : jsonArray) {
+//	 					System.out.println("contagem2: " + count);
+//	 					JsonObject jsonObject = jsonElement.getAsJsonObject();
+//
+//	 					String fornecedorTipo = jsonObject.get("fornecedor_tipo")
+//	 							.isJsonNull() ? null : jsonObject
+//	 							.get("fornecedor_tipo").getAsString();
+//
+//	 					fornecedorId = jsonObject.get("fornecedor_id")
+//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_id")
+//	 							.getAsString();
+//
+//	 					String fornecedorNome = jsonObject.get("fornecedor_nome")
+//	 							.isJsonNull() ? null : jsonObject
+//	 							.get("fornecedor_nome").getAsString();
+//
+//	 					String fornecedorNomeFantasia = jsonObject.get(
+//	 							"fornecedor_nomefantasia").isJsonNull() ? null
+//	 							: jsonObject.get("fornecedor_nomefantasia")
+//	 									.getAsString();
+//	 					if (fornecedorNomeFantasia == null) {
+//	 						fornecedorNomeFantasia = fornecedorNome;
+//	 					}
+//	 					String fornecedorEndereco = jsonObject.get(
+//	 							"fornecedor_endereco").isJsonNull() ? null : jsonObject
+//	 							.get("fornecedor_endereco").getAsString();
+//	 					
+//	 					if (fornecedorEndereco == null) {
+//	 						/*
+//	 						 * insertLogIntegracao(
+//	 						 * "Fornecedor com vari�vel Endere�o nula, Endere�o cadastrado como vazio: "
+//	 						 * , "Aviso", fornecedorNome);
+//	 						 */
+//	 					}
+//	 					
+//	 					String fornecedorBairro = jsonObject.get("fornecedor_bairro")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_bairro").getAsString();
+//	 					
+//	 					if (fornecedorBairro == null) {
+//	 						/*
+//	 						 * insertLogIntegracao(
+//	 						 * "Fornecedor com vari�vel Bairro nulo, Bairro cadastrado como vazio: "
+//	 						 * , "Aviso", fornecedorNome);
+//	 						 */
+//	 					}
+//	 					String fornecedorCidade = jsonObject.get("fornecedor_cidade")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_cidade").getAsString();
+//	 					if (fornecedorCidade == null) {
+//	 						/*
+//	 						 * insertLogIntegracao(
+//	 						 * "Fornecedor com vari�vel Cidade nulo, n�o ser� cadastrado: "
+//	 						 * , "Aviso", fornecedorNome);
+//	 						 */
+//	 					}
+//	 					String fornecedorUf = jsonObject.get("fornecedor_uf")
+//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_uf")
+//	 							.getAsString();
+//
+//	 					String fornecedorCep = jsonObject.get("fornecedor_cep")
+//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_cep")
+//	 							.getAsString();
+//
+//	 					String fornecedorInscMunicipal = jsonObject.get(
+//	 							"fornecedor_isncmunicipal").isJsonNull() ? null
+//	 							: jsonObject.get("fornecedor_isncmunicipal")
+//	 									.getAsString();
+//
+//	 					String fornecedorInscestadual = jsonObject.get(
+//	 							"fornecedor_inscestadual").isJsonNull() ? null
+//	 							: jsonObject.get("fornecedor_inscestadual")
+//	 									.getAsString();
+//
+//	 					String fornecedorFone1 = jsonObject.get("fornecedor_fone1")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_fone1").getAsString();
+//
+//	 					String fornecedorFone2 = jsonObject.get("fornecedor_fone2")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_fone2").getAsString();
+//
+//	 					String fornecedorFax = jsonObject.get("fornecedor_fax")
+//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_fax")
+//	 							.getAsString();
+//
+//	 					String fornecedorCelular = jsonObject.get("fornecedor_celular")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_celular").getAsString();
+//
+//	 					String fornecedorContato = jsonObject.get("fornecedor_contato")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_contato").getAsString();
+//
+//	 					String fornecedorCpfcnpj = jsonObject.get("fornecedor_cpfcnpj")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_cpfcnpj").getAsString();
+//	 					if (fornecedorCpfcnpj == null) {
+//	 						/*
+//	 						 * insertLogIntegracao(
+//	 						 * "Fornecedor com vari�vel CpfCnpj nulo, n�o ser� cadastrado: "
+//	 						 * , "Aviso", fornecedorNome);
+//	 						 */
+//	 					}
+//	 					String fornecedorEmail = jsonObject.get("fornecedor_email")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_email").getAsString();
+//
+//	 					String fornecedorHomepage = jsonObject.get(
+//	 							"fornecedor_homepage").isJsonNull() ? null : jsonObject
+//	 							.get("fornecedor_homepage").getAsString();
+//
+//	 					String fornecedorAtivo = jsonObject.get("fornecedor_ativo")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"fornecedor_ativo").getAsString();
+//	 					if (fornecedorAtivo == null) {
+//	 						/*
+//	 						 * insertLogIntegracao(
+//	 						 * "Fornecedor com vari�vel Ativo nulo, n�o ser� cadastrado: "
+//	 						 * , "Aviso", fornecedorNome);
+//	 						 */
+//	 					}
+//	 					String dataAtualizacao = jsonObject.get("data_atualizacao")
+//	 							.isJsonNull() ? null : jsonObject.get(
+//	 							"data_atualizacao").getAsString();
+//	 					if ((fornecedorCpfcnpj != null) && (fornecedorAtivo != null)
+//	 							&& (fornecedorCidade != null)) {
+//	 						
+//	 						System.out.println("Primeiro if de valida��o de dados");
+//	 						
+//	 						boolean fornecedor = mapaInfParceiros.get(fornecedorCpfcnpj) == null ? true : false;
+//	 						
+//	 						System.out.println("Validacao parceiro: " + fornecedor);
+//	 						
+//	 						if (fornecedor) {
+//	 							
+//	 							System.out.println("Entrou no cadastro");
+//	 							
+//	 							insertFornecedor(
+//	 									fornecedorTipo, fornecedorId, fornecedorNome,
+//	 									fornecedorNomeFantasia, fornecedorEndereco,
+//	 									fornecedorBairro, fornecedorCidade,
+//	 									fornecedorUf, fornecedorCep,
+//	 									fornecedorInscMunicipal, fornecedorCpfcnpj,
+//	 									fornecedorHomepage, fornecedorAtivo,
+//	 									dataAtualizacao, fornecedorInscestadual,
+//	 									fornecedorFone1, fornecedorFone2,
+//	 									fornecedorFax, fornecedorCelular,
+//	 									fornecedorContato, fornecedorNome,
+//	 									fornecedorEmail, codEmp);
+//
+//	 							System.out.println("Fornecedor cadastrado");
+//	 							
+//	 						} else {
+//	 							boolean IdFornecedor = mapaInfIdParceiros.get(fornecedorId + "###" + fornecedorCpfcnpj + "###" + codEmp)
+//	 									== null ? true : false;
+//	 							//getIfIdFornecedorExist(fornecedorCpfcnpj, fornecedorId, codEmp);
+//	 							
+//	 							System.out.println("Validacao id fornecedor: " + IdFornecedor);
+//	 							
+//	 							if (IdFornecedor) {
+//	 								insertIdForn(fornecedorId, fornecedorCpfcnpj,
+//	 										codEmp);
+//	 							}
+//
+//	 						}
+//	 						
+//	 						count++;
+//	 						
+//	 					}else{
+//	 						
+//	 						selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Fornecedor Nao Sera Cadastrado, Informacoes Nulas ou invalidas', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+//	 						
+//	 						
+//	 					}
+//	 				}
+//	 			}else{
+//
+//	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Status de Retorno da API Diferente de Sucesso, Status Retornado: "+status+"', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+//	 				
+//	 			}
+//	 			
+//	 		} catch (Exception e) {
+//	 			e.printStackTrace();
+//	 			try {
+//	 				
+//	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro no chamado do endpoint: " + e.getMessage()+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
+//	 				
+//	 				/*util.inserirLog(
+//	 						"Erro no chamado do endpoint: " + e.getMessage(),
+//	 						"Erro", fornecedorId, codEmp);*/
+//	 			} catch (Exception e1) {
+//	 				e1.printStackTrace();
+//	 			}
+//	 		}
+//	 	}
 
 	 	public boolean getIfFornecedorExist(String fornecedorCpfcnpj)
 	 			throws Exception {

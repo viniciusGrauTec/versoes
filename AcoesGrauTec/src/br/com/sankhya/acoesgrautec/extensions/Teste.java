@@ -30,11 +30,11 @@ public class Teste {
                 String taxaDescricao = tituloNode.get("taxa_descricao").asText();
 
                 // Armazenar a combina��o �nica de taxa_id e taxa_descricao
-                taxasUnicas.add("ID da Taxa: " + taxaId + ", Descri��o: " + taxaDescricao);
+                taxasUnicas.add("ID da Taxa: " + taxaId + ", Descricao: " + taxaDescricao);
             }
 
             // Exibir todas as combina��es �nicas
-            System.out.println("Taxas �nicas encontradas:");
+            System.out.println("Taxas unicas encontradas:");
             for (String taxa : taxasUnicas) {
                 System.out.println(taxa);
             }
