@@ -458,7 +458,7 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 
 			jdbc.openSession();
 			
-			String query = "SELECT CODEMP, URL, TOKEN, "
+			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO"
 					+ "CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS TIPEMP "
 					+ "FROM AD_LINKSINTEGRACAO";
 			
@@ -473,6 +473,13 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
 				tipoEmpresa = rs.getString("TIPEMP");
+				String statusIntegracao = rs.getString("INTEGRACAO");
+				
+				// Verifica se a integração está ativa para esta empresa
+				if (!"S".equals(statusIntegracao)) {
+					System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+					continue; // Pula para a próxima iteração do loop
+				}
 
 				iterarEndpoint(tipoEmpresa.trim(), mapaInfNaturezaEmp, mapaInfCenCusEmp, 
 						mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta,

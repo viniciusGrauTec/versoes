@@ -415,7 +415,7 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 			
 			jdbc.openSession();
 			
-			String query = "SELECT CODEMP, URL, TOKEN, "
+			String query = "SELECT CODEMP, URL, TOKEN,INTEGRACAO "
 					+ "CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS TIPEMP "
 					+ "FROM AD_LINKSINTEGRACAO";
 
@@ -429,6 +429,13 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
 				tipoEmpresa = rs.getString("TIPEMP");
+				String statusIntegracao = rs.getString("INTEGRACAO");
+				
+				// Verifica se a integração está ativa para esta empresa
+				if (!"S".equals(statusIntegracao)) {
+					System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+					continue; // Pula para a próxima iteração do loop
+				}
 				
 				iterarEndpoint(tipoEmpresa.trim(), mapaInfNaturezaEmp, mapaInfCenCusEmp,    //433
 						mapaInfFinanceiroBanco, mapaInfFinanceiroBaixado, 
@@ -866,8 +873,10 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 		}
 	}
 	
+	
+	//debug para erro de this is not a java array 
 	public void leituraJSON(String tipoEmpresa,
-			Map<String, BigDecimal> mapaInfNaturezaEmp,      //870
+			Map<String, BigDecimal> mapaInfNaturezaEmp,      
 			Map<String, BigDecimal> mapaInfCenCusEmp,
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
 			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
@@ -901,11 +910,58 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 		
 		EnviromentUtils util = new EnviromentUtils();
 		
+		
+		
 		try {
 
 			JsonParser parser = new JsonParser();
 			
-			
+			System.out.println("Response length: " + response.length);
+		    System.out.println("Response content: " + response[1]);
+		    
+		    // Adicione estas instruções de debug logo após criar o parser
+		    System.out.println("Tipo de resposta: " + parser.parse(response[1]).getClass().getName());
+		    System.out.println("Conteúdo bruto da resposta: ");
+		    System.out.println(response[1]);
+		    
+		    try {
+		        // Tente analisar a resposta de maneira diferente
+		        JsonElement element = parser.parse(response[1]);
+		        
+		        if (element.isJsonArray()) {
+		            JsonArray jsonArray = element.getAsJsonArray();
+		            System.out.println("Analisado com sucesso como array JSON com " + jsonArray.size() + " elementos");
+		            
+		            // Continue com o processamento do array
+		            if (response[0].equalsIgnoreCase("200")) {
+		                // Seu código existente para processar o array...
+		            }
+		        } else if (element.isJsonObject()) {
+		            JsonObject jsonObject = element.getAsJsonObject();
+		            System.out.println("A resposta é um objeto JSON, não um array");
+		            // Se os dados reais estiverem dentro de um objeto, você pode precisar extraí-los
+		            if (jsonObject.has("data") && jsonObject.get("data").isJsonArray()) {
+		                System.out.println("Array de dados encontrado dentro do objeto JSON");
+		                JsonArray jsonArray = jsonObject.get("data").getAsJsonArray();
+		                
+		                // Continue com o processamento do array extraído
+		                if (response[0].equalsIgnoreCase("200")) {
+		                    // Seu código existente para processar o array...
+		                }
+		            } else {
+		                System.out.println("Nenhum array 'data' encontrado no objeto JSON");
+		            }
+		        } else {
+		            System.out.println("A resposta não é nem um array JSON nem um objeto JSON");
+		        }
+		    } catch (Exception e) {
+		        System.out.println("Exceção ao tentar analisar o JSON: " + e.getMessage());
+		        e.printStackTrace();
+		    }
+		    
+		    
+		    //fim do debug
+		    
 			System.out.println("Response length: " + response.length);
 			
 			System.out.println("Response content: " + response[1]);

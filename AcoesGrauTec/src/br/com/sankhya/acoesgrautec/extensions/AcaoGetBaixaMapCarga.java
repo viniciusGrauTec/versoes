@@ -1,8 +1,3 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
-
 package br.com.sankhya.acoesgrautec.extensions;
 
 import br.com.sankhya.acoesgrautec.util.EnviromentUtils;
@@ -437,7 +432,8 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			}
 
 			jdbc.openSession();
-			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
+			// Modificado para incluir a verificação da flag INTEGRACAO 
+ 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO FROM AD_LINKSINTEGRACAO";
 			pstmt = jdbc.getPreparedStatement(query);
 			rs = pstmt.executeQuery();
 
@@ -450,6 +446,14 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 				codEmp = rs.getBigDecimal("CODEMP");
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
+				String statusIntegracao = rs.getString("INTEGRACAO");
+				
+				// Verifica se a integração está ativa para esta empresa
+				if (!"S".equals(statusIntegracao)) {
+					System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
+					continue; // Pula para a próxima iteração do loop
+				}
+				
 				this.iterarEndpoint(url, token, codEmp, mapaInfIdBaixaOrig, mapaInfIdBaixa, mapaInfTipoTituloTaxa,
 						mapaInfBanco, mapaInfConta, mapaInfAlunos, mapaInfFinanceiro, mapaInfTipoTitulo,
 						mapaInfMenorDataMovBancariaPorConta, mapaInfFinanceiroBaixado, mapaInfFinanceiroValor,
