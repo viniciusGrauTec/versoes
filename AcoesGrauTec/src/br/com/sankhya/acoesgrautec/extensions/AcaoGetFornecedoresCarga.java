@@ -48,18 +48,12 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 		String url = (String) registro.getCampo("URL");
 	 		String token = (String) registro.getCampo("TOKEN");
 	 		BigDecimal codEmp = (BigDecimal) registro.getCampo("CODEMP");
+	 		String flagProfessor = (String) registro.getCampo("PROFESSOR"); // Nova flag
 	 		
 	 		String dataInicio = contexto.getParam("DTINICIO").toString().substring(0, 10);
 	 		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
 	 		String idForn = (String) contexto.getParam("IDFORN");
 	 		
-	 	// Obter o valor do parâmetro PROFESSOR e converter para boolean
-	 		String valorProfessor = (String) contexto.getParam("PROFESSOR");
-	 		boolean apenasProfe = valorProfessor != null && valorProfessor.equalsIgnoreCase("S");
-	 		
-	 	// Log para debug
-	 		System.out.println("Valor do parâmetro PROFESSOR: " + valorProfessor);
-	 		System.out.println("Filtrando apenas professores: " + apenasProfe);
 	 		
 	 		try {
 
@@ -95,8 +89,17 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			}
 	 			
 	 			
-	 			processDateRangeByMonthsForSuppliers(mapaInfIdParceiros, mapaInfParceiros, url,                               //processDateRange
-	 					token, codEmp, dataInicio, dataFim, idForn,apenasProfe);
+	 			 if ("S".equals(flagProfessor)) {
+	 		        // Método específico para professores
+	 		        processDateRangeByMonthsForProfessors(mapaInfIdParceiros, mapaInfParceiros, url,
+	 		                token, codEmp, dataInicio, dataFim, idForn);
+	 		        
+	 		   	processDateRangeByMonthsForSuppliers(mapaInfIdParceiros, mapaInfParceiros, url,                              
+	 					token, codEmp, dataInicio, dataFim, idForn);
+	 		    }
+	 			
+	 			processDateRangeByMonthsForSuppliers(mapaInfIdParceiros, mapaInfParceiros, url,                              
+	 					token, codEmp, dataInicio, dataFim, idForn);
 	 			
 	 			contexto.setMensagemRetorno("Periodo Processado!");
 	 			
@@ -186,7 +189,7 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			jdbc.openSession();
 	 			
 	 		    // Modificado para incluir a verificação da flag INTEGRACAO 
-	 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO FROM AD_LINKSINTEGRACAO";
+	 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO, PROFESSOR FROM AD_LINKSINTEGRACAO FROM AD_LINKSINTEGRACAO";
 
 	 			pstmt = jdbc.getPreparedStatement(query);
 
@@ -199,15 +202,29 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 				url = rs.getString("URL");
 	 				token = rs.getString("TOKEN");
 	 				String statusIntegracao = rs.getString("INTEGRACAO");
+	 				String flagProfessor = rs.getString("PROFESSOR"); // Nova flag
 	 				
 	 				// Verifica se a integração está ativa para esta empresa
 					if (!"S".equals(statusIntegracao)) {
 						System.out.println("Integração desativada para a empresa " + codEmp + " - pulando processamento");
 						continue; // Pula para a próxima iteração do loop
 					}
-
+				
 	 				iterarEndpoint(mapaInfIdParceiros, mapaInfParceiros, url,
 	 						token, codEmp);
+	 				
+	 				
+	 			// Processar Professores se a flag estiver ativa
+	 			    if ("S".equals(flagProfessor)) {
+	 			        System.out.println("Processando PROFESSORES para empresa " + codEmp);
+	 			        iterarEndpointProfessoresJOB(
+	 			            mapaInfIdParceiros, 
+	 			            mapaInfParceiros, 
+	 			            url.trim(), 
+	 			            token, 
+	 			            codEmp
+	 			        );
+	 			    }
 	 			}
 	 			System.out
 	 					.println("Finalizou o cadastro dos fornecedores no Job");
@@ -282,115 +299,104 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 		
 	 		}
 	 	}
-
 	 	
-//	 	public void processDateRange(
-//	 	        Map<String, BigDecimal> mapaInfIdParceiros,
-//	 	        Map<String, BigDecimal> mapaInfParceiros,
-//	 	        String url,
-//	 	        String token,
-//	 	        BigDecimal codEmp,
-//	 	        String dataInicio,
-//	 	        String dataFim,
-//	 	        String idForn,
-//	 	       boolean apenasProfe) throws Exception {
-//
-//	 	    try {
-//	 	        // Convertendo as Strings para LocalDate
-//	 	        LocalDate inicio = LocalDate.parse(dataInicio);
-//	 	        LocalDate fim = LocalDate.parse(dataFim);
-//	 	        LocalDate atual = inicio;
-//
-//	 	        while (!atual.isAfter(fim)) {
-//	 	            String dataAtual = atual.toString();
-//	 	            
-//	 	            // Preparar as datas completas para o dia atual
-//	 	            String dataInicialCompleta = dataAtual + " 00:00:00";
-//	 	            String dataFinalCompleta = dataAtual + " 23:59:59";
-//
-//	 	            // Codificar os parâmetros
-//	 	            String dataInicialEncoded = URLEncoder.encode(dataInicialCompleta, "UTF-8");
-//	 	            String dataFinalEncoded = URLEncoder.encode(dataFinalCompleta, "UTF-8");
-//
-//	 	            // Lista para armazenar todos os registros do dia
-//	 	            JSONArray registrosDoDia = new JSONArray();
-//	 	            int pagina = 1;
-//	 	            boolean temMaisRegistros = true;
-//
-//	 	            while (temMaisRegistros) {
-//	 	                // Construir a URL para a página atual
-//	 	                StringBuilder urlBuilder = new StringBuilder();
-//	 	                urlBuilder.append(url.trim())
-//	 	                        .append("/financeiro/clientes/fornecedores")
-//	 	                        .append("?pagina=").append(pagina)
-//	 	                        .append("&quantidade=100")
-//	 	                        .append("&dataInicial=").append(dataInicialEncoded)
-//	 	                        .append("&dataFinal=").append(dataFinalEncoded);
-//
-//	 	               // Adicionar parâmetro de fornecedor se estiver presente
-//	 	                if (idForn != null && !idForn.isEmpty()) {
-//	 	                    String fornecedorEncoded = URLEncoder.encode(idForn, "UTF-8");      
-//	 	                    urlBuilder.append("&fornecedor=").append(fornecedorEncoded);
-//	 	                }
-//	 	                
-//	 	                
-//	 	               if (apenasProfe) {
-//	 	                    urlBuilder.append("&fornecedor_tipo=PROFE");
-//	 	                    System.out.println("Filtrando apenas professores (PROFE)");
-//	 	                }
-//	 	                
-//	 	       
-//	 	                String urlCompleta = urlBuilder.toString();
-//	 	                System.out.println("URL para fornecedores (data: " + dataAtual + ", página " + pagina + "): " + urlCompleta);
-//
-//	 	                // Fazer a requisição
-//	 	                String[] response = apiGet2(urlCompleta, token);
-//	 	                int status = Integer.parseInt(response[0]);
-//
-//	 	                if (status == 200) {
-//	 	                    JSONArray paginaAtual = new JSONArray(response[1]);
-//	 	                    
-//	 	                    // Adicionar registros ao array acumulado
-//	 	                    for (int i = 0; i < paginaAtual.length(); i++) {
-//	 	                        registrosDoDia.put(paginaAtual.getJSONObject(i));
-//	 	                    }
-//	 	                    
-//	 	                    // Verificar se é a última página
-//	 	                    if (paginaAtual.length() < 100) {
-//	 	                        temMaisRegistros = false;
-//	 	                    } else {
-//	 	                        pagina++;
-//	 	                    }
-//	 	                    
-//	 	                    System.out.println("Data " + dataAtual + " - Página " + pagina + ": " + 
-//	 	                                     paginaAtual.length() + " registros. Total acumulado: " + 
-//	 	                                     registrosDoDia.length());
-//	 	                } else {
-//	 	                    throw new Exception(String.format(
-//	 	                        "Erro na requisição de fornecedores. Status: %d. Resposta: %s. URL: %s",
-//	 	                        status, response[1], urlCompleta
-//	 	                    ));
-//	 	                }
-//	 	            }
-//
-//	 	            // Processar todos os registros do dia atual
-//	 	            String[] responseArray = new String[]{String.valueOf(200), registrosDoDia.toString()};
-//	 	            
-//	 	            
-//	 	            
-//	 	            cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros, responseArray, codEmp);
-//
-//	 	            // Incrementar para o próximo dia
-//	 	            atual = atual.plusDays(1);
-//	 	            System.out.println("Total de registros processados para " + dataAtual + ": " + registrosDoDia.length());
-//	 	        }
-//
-//	 	    } catch (Exception e) {
-//	 	        System.err.println("Erro ao processar período " + dataInicio + " até " + dataFim + ": " + e.getMessage());
-//	 	        e.printStackTrace();
-//	 	        throw e;
-//	 	    }
-//	 	}
+	 	public void iterarEndpointProfessoresJOB(Map<String, BigDecimal> mapaInfIdParceiros,
+	 	        Map<String, BigDecimal> mapaInfParceiros, String url, String token,
+	 	        BigDecimal codEmp) throws Exception {
+	 	    
+	 	    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+	 	    String dataAtual = formato.format(new Date());
+	 	    
+	 	    try {
+	 	        System.out.println("Iniciando iteração para PROFESSORES no JOB");
+
+	 	        // Construa a URL com a data atual como intervalo
+	 	        String urlCompleta = url.trim()
+	 	                + "/financeiro/clientes/fornecedores?"
+	 	                + "quantidade=0"
+	 	                + "&dataInicial=" + URLEncoder.encode(dataAtual + " 00:00:00", "UTF-8")
+	 	                + "&dataFinal=" + URLEncoder.encode(dataAtual + " 23:59:59", "UTF-8")
+	 	                + "&fornecedor_tipo=PROFE";
+
+	 	        System.out.println("URL Professores (JOB): " + urlCompleta);
+
+	 	        String[] response = apiGet2(urlCompleta, token);
+	 	        int status = Integer.parseInt(response[0]);
+
+	 	        if (status == 200) {
+	 	            cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros, response, codEmp);
+	 	        } else {
+	 	            System.err.println("Erro ao buscar professores no JOB. Status: " + status);
+	 	        }
+
+	 	    } catch (Exception e) {
+	 	        System.out.println("Erro ao processar PROFESSORES no JOB: " + e.getMessage());
+	 	        e.printStackTrace();
+	 	        throw e; // Propague para registrar no log
+	 	    }
+	 	}
+	 	
+	 
+	 	
+	 // Método para processar fornecedores do tipo PROFE em um intervalo de datas
+	 	private void processDateRangeByMonthsForProfessors(Map<String, BigDecimal> mapaInfIdParceiros,
+	 	                                                 Map<String, BigDecimal> mapaInfParceiros, 
+	 	                                                 String url, String token, BigDecimal codEmp, 
+	 	                                                 String dataInicio, String dataFim, String idForn) throws Exception {
+	 	    
+	 	    System.out.println("Processando PROFESSORES para o período: " + dataInicio + " até " + dataFim);
+	 	    
+	 	    // Se idForn for especificado, modifique a URL para incluí-lo
+	 	    String urlProcessamento = url;
+	 	    if (idForn != null && !idForn.isEmpty()) {
+	 	        urlProcessamento += "&idFornecedor=" + idForn;
+	 	    }
+	 	    
+	 	    // Chama o método específico para professores
+	 	    iterarEndpointProfessores(mapaInfIdParceiros, mapaInfParceiros, 
+	 	                             urlProcessamento, token, codEmp, dataInicio, dataFim);
+	 	}
+	 	
+	 	
+		/**
+	 	 * Método específico para iterar o endpoint dos professores
+	 	 */
+	 	public void iterarEndpointProfessores(Map<String, BigDecimal> mapaInfIdParceiros,
+	 	        Map<String, BigDecimal> mapaInfParceiros, String url, String token,
+	 	        BigDecimal codEmp, String dataInicio, String dataFim) throws Exception {
+
+	 	    SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
+	 	    
+	 	    // Se dataInicio e dataFim forem fornecidos, use-os
+	 	    // Caso contrário, use a data atual para ambos
+	 	    String dataInicialFormatada = (dataInicio != null) ? dataInicio : formato.format(new Date());
+	 	    String dataFinalFormatada = (dataFim != null) ? dataFim : formato.format(new Date());
+
+	 	    try {
+	 	        System.out.println("Iniciando iteração para PROFESSORES");
+
+	 	        // Construa a URL incluindo o parâmetro fornecedor_tipo=PROFE
+	 	        String[] response = apiGet2(url
+	 	                + "/financeiro/clientes/fornecedores?" + "quantidade=0"
+	 	                + "&dataInicial=" + dataInicialFormatada + " 00:00:00&dataFinal="
+	 	                + dataFinalFormatada + " 23:59:59"
+	 	                + "&fornecedor_tipo=PROFE", token);
+
+	 	        int status = Integer.parseInt(response[0]);
+	 	        System.out.println("Status requisição PROFESSORES: " + status);
+
+	 	        String responseString = response[1];
+	 	        System.out.println("Response string PROFESSORES: " + responseString);
+
+	 	        cadastrarFornecedor(mapaInfIdParceiros, mapaInfParceiros,
+	 	                response, codEmp);
+
+	 	    } catch (Exception e) {
+	 	        System.out.println("Erro ao processar PROFESSORES: " + e.getMessage());
+	 	        e.printStackTrace();
+	 	    }
+	 	}
+
 	 	
 	 // Method to process suppliers by months instead of days to reduce API calls
 	 	public void processDateRangeByMonthsForSuppliers(
@@ -401,8 +407,7 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	        BigDecimal codEmp,
 	 	        String dataInicio,
 	 	        String dataFim,
-	 	        String idForn,
-	 	        boolean apenasProfe) throws Exception {
+	 	        String idForn) throws Exception {
 
 	 	    // Converter strings de data para objetos LocalDate
 	 	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -428,8 +433,8 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	            codEmp,
 	 	            periodoInicio.format(formatter),
 	 	            periodoFim.format(formatter),
-	 	            idForn,
-	 	            apenasProfe
+	 	            idForn
+	 	            
 	 	        );
 
 	 	        // Avançar para o próximo mês
@@ -446,8 +451,7 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	        BigDecimal codEmp,
 	 	        String dataInicio,
 	 	        String dataFim,
-	 	        String idForn,
-	 	        boolean apenasProfe) throws Exception {
+	 	        String idForn) throws Exception {
 
 	 	    try {
 	 	        // Preparar as datas completas para o período
@@ -486,10 +490,6 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	                urlBuilder.append("&fornecedor=").append(fornecedorEncoded);
 	 	            }
 	 	            
-	 	            if (apenasProfe) {
-	 	                urlBuilder.append("&fornecedor_tipo=PROFE");
-	 	                System.out.println("Filtrando apenas professores (PROFE)");
-	 	            }
 	 	            
 	 	            String urlCompleta = urlBuilder.toString();
 	 	            System.out.println("URL para fornecedores (período: " + dataInicio + " a " + dataFim + ", página " + pagina + "): " + urlCompleta);
@@ -763,8 +763,13 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 
 	 	                String fornecedorAtivo = jsonObject.get("fornecedor_ativo")
 	 	                        .isJsonNull() ? null : jsonObject.get(
-	 	                        "fornecedor_ativo").getAsString();
+	 	                        "fornecedor_ativo").getAsString();	 	                	 	      
 	 	                
+	 	               if (fornecedorAtivo == null || fornecedorAtivo.isEmpty()) {
+	 	            	    fornecedorAtivo = "S"; 
+	 	            	}
+	 	         
+	 	              
 	 	                String dataAtualizacao = jsonObject.get("data_atualizacao")
 	 	                        .isJsonNull() ? null : jsonObject.get(
 	 	                        "data_atualizacao").getAsString();
@@ -873,223 +878,7 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 	    selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Fornecedor Nao Sera Cadastrado, Informacoes Nulas ou invalidas (falta campo obrigatório)', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
 	 	}
 
-//	 	public void cadastrarFornecedor(Map<String, BigDecimal> mapaInfIdParceiros,
-//	 			Map<String, BigDecimal> mapaInfParceiros, String[] response,
-//	 			BigDecimal codEmp) {
-//	 		System.out.println("Cadastro principal");
-//	 		
-//	 		EnviromentUtils util = new EnviromentUtils();
-//	 		
-//	 		String fornecedorId = "";
-//	 		
-//	 		try {
-//	 			
-//	 			String responseString = response[1];
-//	 			String status = response[0];
-//	 			
-//	 			if(status.equalsIgnoreCase("200")){
-//
-//	 				JsonParser parser = new JsonParser();
-//	 				JsonArray jsonArray = parser.parse(responseString).getAsJsonArray();
-//	 				int count = 0;
-//	 				System.out.println("contagem: " + count);
-//	 				
-//	 				for (JsonElement jsonElement : jsonArray) {
-//	 					System.out.println("contagem2: " + count);
-//	 					JsonObject jsonObject = jsonElement.getAsJsonObject();
-//
-//	 					String fornecedorTipo = jsonObject.get("fornecedor_tipo")
-//	 							.isJsonNull() ? null : jsonObject
-//	 							.get("fornecedor_tipo").getAsString();
-//
-//	 					fornecedorId = jsonObject.get("fornecedor_id")
-//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_id")
-//	 							.getAsString();
-//
-//	 					String fornecedorNome = jsonObject.get("fornecedor_nome")
-//	 							.isJsonNull() ? null : jsonObject
-//	 							.get("fornecedor_nome").getAsString();
-//
-//	 					String fornecedorNomeFantasia = jsonObject.get(
-//	 							"fornecedor_nomefantasia").isJsonNull() ? null
-//	 							: jsonObject.get("fornecedor_nomefantasia")
-//	 									.getAsString();
-//	 					if (fornecedorNomeFantasia == null) {
-//	 						fornecedorNomeFantasia = fornecedorNome;
-//	 					}
-//	 					String fornecedorEndereco = jsonObject.get(
-//	 							"fornecedor_endereco").isJsonNull() ? null : jsonObject
-//	 							.get("fornecedor_endereco").getAsString();
-//	 					
-//	 					if (fornecedorEndereco == null) {
-//	 						/*
-//	 						 * insertLogIntegracao(
-//	 						 * "Fornecedor com vari�vel Endere�o nula, Endere�o cadastrado como vazio: "
-//	 						 * , "Aviso", fornecedorNome);
-//	 						 */
-//	 					}
-//	 					
-//	 					String fornecedorBairro = jsonObject.get("fornecedor_bairro")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_bairro").getAsString();
-//	 					
-//	 					if (fornecedorBairro == null) {
-//	 						/*
-//	 						 * insertLogIntegracao(
-//	 						 * "Fornecedor com vari�vel Bairro nulo, Bairro cadastrado como vazio: "
-//	 						 * , "Aviso", fornecedorNome);
-//	 						 */
-//	 					}
-//	 					String fornecedorCidade = jsonObject.get("fornecedor_cidade")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_cidade").getAsString();
-//	 					if (fornecedorCidade == null) {
-//	 						/*
-//	 						 * insertLogIntegracao(
-//	 						 * "Fornecedor com vari�vel Cidade nulo, n�o ser� cadastrado: "
-//	 						 * , "Aviso", fornecedorNome);
-//	 						 */
-//	 					}
-//	 					String fornecedorUf = jsonObject.get("fornecedor_uf")
-//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_uf")
-//	 							.getAsString();
-//
-//	 					String fornecedorCep = jsonObject.get("fornecedor_cep")
-//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_cep")
-//	 							.getAsString();
-//
-//	 					String fornecedorInscMunicipal = jsonObject.get(
-//	 							"fornecedor_isncmunicipal").isJsonNull() ? null
-//	 							: jsonObject.get("fornecedor_isncmunicipal")
-//	 									.getAsString();
-//
-//	 					String fornecedorInscestadual = jsonObject.get(
-//	 							"fornecedor_inscestadual").isJsonNull() ? null
-//	 							: jsonObject.get("fornecedor_inscestadual")
-//	 									.getAsString();
-//
-//	 					String fornecedorFone1 = jsonObject.get("fornecedor_fone1")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_fone1").getAsString();
-//
-//	 					String fornecedorFone2 = jsonObject.get("fornecedor_fone2")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_fone2").getAsString();
-//
-//	 					String fornecedorFax = jsonObject.get("fornecedor_fax")
-//	 							.isJsonNull() ? null : jsonObject.get("fornecedor_fax")
-//	 							.getAsString();
-//
-//	 					String fornecedorCelular = jsonObject.get("fornecedor_celular")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_celular").getAsString();
-//
-//	 					String fornecedorContato = jsonObject.get("fornecedor_contato")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_contato").getAsString();
-//
-//	 					String fornecedorCpfcnpj = jsonObject.get("fornecedor_cpfcnpj")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_cpfcnpj").getAsString();
-//	 					if (fornecedorCpfcnpj == null) {
-//	 						/*
-//	 						 * insertLogIntegracao(
-//	 						 * "Fornecedor com vari�vel CpfCnpj nulo, n�o ser� cadastrado: "
-//	 						 * , "Aviso", fornecedorNome);
-//	 						 */
-//	 					}
-//	 					String fornecedorEmail = jsonObject.get("fornecedor_email")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_email").getAsString();
-//
-//	 					String fornecedorHomepage = jsonObject.get(
-//	 							"fornecedor_homepage").isJsonNull() ? null : jsonObject
-//	 							.get("fornecedor_homepage").getAsString();
-//
-//	 					String fornecedorAtivo = jsonObject.get("fornecedor_ativo")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"fornecedor_ativo").getAsString();
-//	 					if (fornecedorAtivo == null) {
-//	 						/*
-//	 						 * insertLogIntegracao(
-//	 						 * "Fornecedor com vari�vel Ativo nulo, n�o ser� cadastrado: "
-//	 						 * , "Aviso", fornecedorNome);
-//	 						 */
-//	 					}
-//	 					String dataAtualizacao = jsonObject.get("data_atualizacao")
-//	 							.isJsonNull() ? null : jsonObject.get(
-//	 							"data_atualizacao").getAsString();
-//	 					if ((fornecedorCpfcnpj != null) && (fornecedorAtivo != null)
-//	 							&& (fornecedorCidade != null)) {
-//	 						
-//	 						System.out.println("Primeiro if de valida��o de dados");
-//	 						
-//	 						boolean fornecedor = mapaInfParceiros.get(fornecedorCpfcnpj) == null ? true : false;
-//	 						
-//	 						System.out.println("Validacao parceiro: " + fornecedor);
-//	 						
-//	 						if (fornecedor) {
-//	 							
-//	 							System.out.println("Entrou no cadastro");
-//	 							
-//	 							insertFornecedor(
-//	 									fornecedorTipo, fornecedorId, fornecedorNome,
-//	 									fornecedorNomeFantasia, fornecedorEndereco,
-//	 									fornecedorBairro, fornecedorCidade,
-//	 									fornecedorUf, fornecedorCep,
-//	 									fornecedorInscMunicipal, fornecedorCpfcnpj,
-//	 									fornecedorHomepage, fornecedorAtivo,
-//	 									dataAtualizacao, fornecedorInscestadual,
-//	 									fornecedorFone1, fornecedorFone2,
-//	 									fornecedorFax, fornecedorCelular,
-//	 									fornecedorContato, fornecedorNome,
-//	 									fornecedorEmail, codEmp);
-//
-//	 							System.out.println("Fornecedor cadastrado");
-//	 							
-//	 						} else {
-//	 							boolean IdFornecedor = mapaInfIdParceiros.get(fornecedorId + "###" + fornecedorCpfcnpj + "###" + codEmp)
-//	 									== null ? true : false;
-//	 							//getIfIdFornecedorExist(fornecedorCpfcnpj, fornecedorId, codEmp);
-//	 							
-//	 							System.out.println("Validacao id fornecedor: " + IdFornecedor);
-//	 							
-//	 							if (IdFornecedor) {
-//	 								insertIdForn(fornecedorId, fornecedorCpfcnpj,
-//	 										codEmp);
-//	 							}
-//
-//	 						}
-//	 						
-//	 						count++;
-//	 						
-//	 					}else{
-//	 						
-//	 						selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Fornecedor Nao Sera Cadastrado, Informacoes Nulas ou invalidas', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-//	 						
-//	 						
-//	 					}
-//	 				}
-//	 			}else{
-//
-//	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Status de Retorno da API Diferente de Sucesso, Status Retornado: "+status+"', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-//	 				
-//	 			}
-//	 			
-//	 		} catch (Exception e) {
-//	 			e.printStackTrace();
-//	 			try {
-//	 				
-//	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro no chamado do endpoint: " + e.getMessage()+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-//	 				
-//	 				/*util.inserirLog(
-//	 						"Erro no chamado do endpoint: " + e.getMessage(),
-//	 						"Erro", fornecedorId, codEmp);*/
-//	 			} catch (Exception e1) {
-//	 				e1.printStackTrace();
-//	 			}
-//	 		}
-//	 	}
+
 
 	 	public boolean getIfFornecedorExist(String fornecedorCpfcnpj)
 	 			throws Exception {
@@ -1221,98 +1010,114 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 		return bd;
 	 	}
 
-	 	public BigDecimal insertFornecedor(String fornecedorTipo,
-	 			String fornecedorId, String fornecedorNome,
-	 			String fornecedorNomeFantasia, String fornecedorEndereco,
-	 			String fornecedorBairro, String fornecedorCidade,
-	 			String fornecedorUf, String fornecedorCep,
-	 			String fornecedorInscMunicipal, String fornecedorCpfcnpj,
-	 			String fornecedorHomepage, String fornecedorAtivo,
-	 			String dataAtualizacao, String fornecedorInscestadual,
-	 			String fornecedorFone1, String fornecedorFone2,
-	 			String fornecedorFax, String fornecedorCelular,
-	 			String fornecedorContato, String fornecedorNome2,
-	 			String fornecedorEmail, BigDecimal codEmp) throws Exception {
-	 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-	 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-	 		PreparedStatement pstmt = null;
-	 		
-	 		EnviromentUtils util = new EnviromentUtils();
-	 		
-	 		BigDecimal atualCodparc = util.getMaxNumParc();
+	 	
+	 	public BigDecimal insertFornecedor(
+	 		    String fornecedorTipo, String fornecedorId, String fornecedorNome,
+	 		    String fornecedorNomeFantasia, String fornecedorEndereco,
+	 		    String fornecedorBairro, String fornecedorCidade, String fornecedorUf,
+	 		    String fornecedorCep, String fornecedorInscMunicipal, String fornecedorCpfcnpj,
+	 		    String fornecedorHomepage, String fornecedorAtivo, String dataAtualizacao,
+	 		    String fornecedorInscestadual, String fornecedorFone1, String fornecedorFone2,
+	 		    String fornecedorFax, String fornecedorCelular, String fornecedorContato,
+	 		    String fornecedorNome2, String fornecedorEmail, BigDecimal codEmp
+	 		) throws Exception {
+	 		    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	 		    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	 		    PreparedStatement pstmt = null;
+	 		    EnviromentUtils util = new EnviromentUtils();
+	 		    BigDecimal atualCodparc = util.getMaxNumParc();
 
-	 		String tipPessoa = "";
-	 		if (fornecedorCpfcnpj.length() == 11) {
-	 			tipPessoa = "F";
-	 		} else if (fornecedorCpfcnpj.length() == 14) {
-	 			tipPessoa = "J";
+	 		    // Validação da Cidade (CODCID)
+	 		    BigDecimal codCid = getCodCid(fornecedorCidade.trim());
+	 		    if (codCid == null || codCid.equals(BigDecimal.ZERO)) {
+	 		        String erroMsg = "Cidade não encontrada: " + fornecedorCidade;
+	 		        selectsParaInsert.add(
+	 		            "SELECT <#NUMUNICO#>, '" + erroMsg + "', SYSDATE, 'Erro', " + codEmp + ", '" + fornecedorId + "' FROM DUAL"
+	 		        );
+	 		        return null; // Aborta a inserção
+	 		    }
+
+	 		    String tipPessoa = (fornecedorCpfcnpj.length() == 11) ? "F" : "J";
+	 		    
+	 		    try {
+	 		        jdbc.openSession();
+
+	 		        String sqlP = 
+	 		            "INSERT INTO TGFPAR ( " +
+	 		                "CODPARC, AD_ID_EXTERNO_FORN, AD_IDENTINSCMUNIC, AD_TIPOFORNECEDOR, " +
+	 		                "FORNECEDOR, IDENTINSCESTAD, HOMEPAGE, ATIVO, NOMEPARC, RAZAOSOCIAL, " +
+	 		                "TIPPESSOA, AD_ENDCREDOR, CODCID, CEP, CGC_CPF, DTCAD, DTALTER, CODEMP " +
+	 		            ") VALUES ( " +
+	 		                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " +
+	 		                "?, ?, ?, ?, ?, SYSDATE, SYSDATE, ? " +
+	 		            ")";
+
+	 		        pstmt = jdbc.getPreparedStatement(sqlP);
+	 		        pstmt.setBigDecimal(1, atualCodparc); // CODPARC
+	 		        pstmt.setString(2, fornecedorId); // AD_ID_EXTERNO_FORN
+	 		        pstmt.setString(3, fornecedorInscMunicipal); // AD_IDENTINSCMUNIC
+	 		        pstmt.setString(4, fornecedorTipo); // AD_TIPOFORNECEDOR
+	 		        pstmt.setString(5, "S"); // FORNECEDOR
+	 		        pstmt.setString(6, fornecedorInscestadual); // IDENTINSCESTAD
+	 		        pstmt.setString(7, fornecedorHomepage); // HOMEPAGE
+	 		        pstmt.setString(8, "S"); // ATIVO
+	 		        pstmt.setString(9, fornecedorNome.toUpperCase()); // NOMEPARC
+	 		        pstmt.setString(10, fornecedorNomeFantasia.toUpperCase()); // RAZAOSOCIAL
+	 		        pstmt.setString(11, tipPessoa); // TIPPESSOA
+	 		        pstmt.setString(12, fornecedorEndereco); // AD_ENDCREDOR
+	 		        pstmt.setBigDecimal(13, codCid); // CODCID (validado)
+	 		        pstmt.setString(14, fornecedorCep); // CEP
+	 		        pstmt.setString(15, fornecedorCpfcnpj); // CGC_CPF
+	 		        pstmt.setBigDecimal(16, codEmp); // CODEMP
+
+	 		        pstmt.executeUpdate();
+
+	 		        insertIdForn(fornecedorId, fornecedorCpfcnpj, codEmp); // ID Externo
+
+	 		    } catch (SQLException e) {
+	 		        String erro = "Erro ao cadastrar fornecedor: " + e.getMessage().replace("'", "\"");
+	 		        selectsParaInsert.add(
+	 		            "SELECT <#NUMUNICO#>, '" + erro + "', SYSDATE, 'Erro', " + codEmp + ", '" + fornecedorId + "' FROM DUAL"
+	 		        );
+	 		        e.printStackTrace();
+	 		    } finally {
+	 		        if (pstmt != null) pstmt.close();
+	 		        jdbc.closeSession();
+	 		    }
+	 		    return atualCodparc;
 	 		}
-	 		try {
-	 			jdbc.openSession();
 
-	 			String sqlP = "INSERT INTO TGFPAR(CODPARC, AD_ID_EXTERNO_FORN, AD_IDENTINSCMUNIC, AD_TIPOFORNECEDOR, FORNECEDOR, IDENTINSCESTAD, HOMEPAGE, ATIVO, NOMEPARC, RAZAOSOCIAL ,TIPPESSOA, AD_ENDCREDOR, CODBAI, CODCID, CEP, CGC_CPF, DTCAD, DTALTER, CODEMP) \t\tVALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE( \t\t\t    upper(nomebai), \t\t\t    '������������������������������������', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  ) like TRANSLATE( \t\t\t    upper(?), \t\t\t    '������������������������������������', \t\t\t    'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC' \t\t\t  )), 0), NVL((SELECT max(codcid) FROM tsicid WHERE TRANSLATE(              UPPER(descricaocorreio),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               LIKE TRANSLATE(UPPER(?),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')               OR SUBSTR(UPPER(descricaocorreio),               1, INSTR(UPPER(descricaocorreio), ' ') - 1)               LIKE TRANSLATE(UPPER(?),               '������������������������������������',               'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')),0),  ?, ?, SYSDATE, SYSDATE, ?)";
+	 		// Método auxiliar para buscar CODCID (mantido)
+	 		private BigDecimal getCodCid(String cidade) throws Exception {
+	 		    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	 		    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	 		    PreparedStatement pstmt = null;
+	 		    ResultSet rs = null;
+	 		    BigDecimal codCid = BigDecimal.ZERO;
 
-	 			pstmt = jdbc.getPreparedStatement(sqlP);
-	 			pstmt.setBigDecimal(1, atualCodparc);
-	 			pstmt.setString(2, fornecedorId);
-	 			pstmt.setString(3, fornecedorInscMunicipal);
-	 			pstmt.setString(4, fornecedorTipo);
-	 			pstmt.setString(5, "S");
-	 			pstmt.setString(6, fornecedorInscestadual);
-	 			pstmt.setString(7, fornecedorHomepage);
-	 			pstmt.setString(8, fornecedorAtivo);
-	 			pstmt.setString(9, fornecedorNome.toUpperCase());
-	 			pstmt.setString(10, fornecedorNomeFantasia.toUpperCase());
-	 			pstmt.setString(11, tipPessoa);
-	 			pstmt.setString(12, fornecedorEndereco);
+	 		    try {
+	 		        jdbc.openSession();
+	 		        String sql = 
+	 		            "SELECT CODCID FROM TSICID " +
+	 		            "WHERE UPPER(TRANSLATE(DESCRICAOCORREIO, 'ÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÃÕÇ', 'AEIOUAEIOUAEIOUAOC')) " +
+	 		            "= UPPER(TRANSLATE(?, 'ÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÃÕÇ', 'AEIOUAEIOUAEIOUAOC'))";
 
-	 			pstmt.setString(13, fornecedorBairro);
+	 		        pstmt = jdbc.getPreparedStatement(sql);
+	 		        pstmt.setString(1, cidade);
+	 		        rs = pstmt.executeQuery();
 
-	 			pstmt.setString(14, fornecedorCidade.trim());
-	 			pstmt.setString(15, fornecedorCidade.trim());
-
-	 			pstmt.setString(16, fornecedorCep);
-
-	 			pstmt.setString(17, fornecedorCpfcnpj);
-	 			pstmt.setBigDecimal(18, codEmp);
-
-	 			pstmt.executeUpdate();
-	 			if ((fornecedorFone1 != null) && (fornecedorFone2 != null)
-	 					&& (fornecedorFax != null) && (fornecedorCelular != null)
-	 					&& (fornecedorContato != null) && (fornecedorNome != null)
-	 					&& (fornecedorEmail != null) && (atualCodparc != null)) {
-	 				insertContatoFornecedor(fornecedorFone1, fornecedorFone2,
-	 						fornecedorFax, fornecedorCelular, fornecedorContato,
-	 						fornecedorNome, fornecedorEmail, atualCodparc, fornecedorId,
-	 						codEmp);
-	 			} else {
-
-	 				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Uma ou mais variaveis sao nulas, a funcao de cadastrar contato nao sera chamada.', SYSDATE, 'Aviso', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 				
-	 				/*util.inserirLog(
-	 						"Uma ou mais vari�veis s�o nulas, a fun��o de cadastrar contato n�o ser� chamada.",
-	 						"Aviso", fornecedorId, codEmp);*/
-	 			}
-
-	 			insertIdForn(fornecedorId, fornecedorCpfcnpj, codEmp);
-
-	 		} catch (SQLException e) {
-	 			/*util.inserirLog(
-	 					"Erro ao cadastrar fornecedor: " + e.getMessage(), "Erro",
-	 					fornecedorId, codEmp);*/
-
-	 			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar fornecedor: " + e.getMessage().replace("'", "\"")+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 			
-	 			
-	 			e.printStackTrace();
-	 		} finally {
-	 			if (pstmt != null) {
-	 				pstmt.close();
-	 			}
-	 			jdbc.closeSession();
+	 		        if (rs.next()) {
+	 		            codCid = rs.getBigDecimal("CODCID");
+	 		        }
+	 		    } finally {
+	 		        if (rs != null) rs.close();
+	 		        if (pstmt != null) pstmt.close();
+	 		        jdbc.closeSession();
+	 		    }
+	 		    return codCid;
 	 		}
-	 		return atualCodparc;
-	 	}
+	 	
+	
 
 	 	public void updateIdForn(String idForn, String cgc) throws Exception {
 	 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1359,57 +1164,36 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			pstmt = jdbc.getPreparedStatement(sqlP);
 
 	 			pstmt.executeUpdate();
-	 		} catch (SQLException e) {
-	 			e.printStackTrace();
-
-	 			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao Cadastrar Id de Fornecedor', SYSDATE, 'Erro', "+codemp+", '"+idForn+"' FROM DUAL");
 	 			
-	 			//util.inserirLog("Erro ao Cadastrar Id de Fornecedor", "Erro", idForn, codemp);
+	 			
+	 		} catch (SQLException e) {
+	 		    e.printStackTrace();
+	 		    
+	 		    String mensagemAmigavel = "Erro ao cadastrar ID do fornecedor. ";
+	 		    String codigoErro = e.getMessage();
+	 		    
+	 		    // Traduzir códigos de erro comuns para mensagens amigáveis
+	 		   if (codigoErro.contains("unique constraint") || codigoErro.contains("ORA-00001")) {
+	 			    mensagemAmigavel += "Este ID de fornecedor já existe no sistema.";
+	 			} else if (codigoErro.contains("integrity constraint") || codigoErro.contains("ORA-02291")) {
+	 			    mensagemAmigavel += "O fornecedor referenciado não foi encontrado no sistema.";
+	 			} else if (codigoErro.contains("cannot insert NULL") || codigoErro.contains("ORA-01400")) {
+	 			    mensagemAmigavel += "Dados obrigatórios estão ausentes.";
+	 			} else if (codigoErro.contains("value too large") || codigoErro.contains("ORA-12899")) {
+	 			    mensagemAmigavel += "Um ou mais valores excede o tamanho permitido.";
+	 			} else if (codigoErro.contains("subconsulta de uma única linha") || codigoErro.contains("ORA-01427")) {
+	 			    mensagemAmigavel += "Foram encontrados múltiplos fornecedores com o mesmo CPF/CNPJ no sistema. Por favor, verifique os dados cadastrais deste fornecedor.";
+	 			} else {
+	 			    mensagemAmigavel += "Ocorreu um problema técnico. Detalhes: " + codigoErro;
+	 			}
+	 		    
+	 		    // Registrar no log com a mensagem amigável
+	 		    selectsParaInsert.add("SELECT <#NUMUNICO#>, '" + mensagemAmigavel.replace("'", "\"") + "', SYSDATE, 'Erro', "+codemp+", '"+idForn+"' FROM DUAL");
 	 		} finally {
 	 			if (pstmt != null) {
 	 				pstmt.close();
 	 			}
 
-	 			jdbc.closeSession();
-	 		}
-	 	}
-
-	 	private void insertContatoFornecedor(String fornecedorFone1,
-	 			String fornecedorFone2, String fornecedorFax,
-	 			String fornecedorCelular, String fornecedorContato,
-	 			String fornecedorNome, String fornecedorEmail,
-	 			BigDecimal credotAtual, String fornecedorId,
-	 			BigDecimal codEmp) throws Exception {
-	 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-	 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-	 		PreparedStatement pstmt = null;
-	 		try {
-	 			jdbc.openSession();
-
-	 			String sqlP = "INSERT INTO TGFCTT (CODCONTATO, CODPARC, NOMECONTATO, CELULAR, TELEFONE, TELRESID, FAX, EMAIL) VALUES ((SELECT MAX(NVL(CODCONTATO, 0)) + 1 FROM TGFCTT WHERE CODPARC = ?), ?, ?, ?, ?, ?, ?, ?)";
-
-	 			pstmt = jdbc.getPreparedStatement(sqlP);
-	 			pstmt.setBigDecimal(1, credotAtual);
-	 			pstmt.setBigDecimal(2, credotAtual);
-	 			pstmt.setString(3, fornecedorNome);
-	 			pstmt.setString(4, fornecedorCelular);
-	 			pstmt.setString(5, fornecedorFone1);
-	 			pstmt.setString(6, fornecedorFone2);
-	 			pstmt.setString(7, fornecedorFax);
-	 			pstmt.setString(8, fornecedorEmail);
-	 			pstmt.executeUpdate();
-	 		} catch (SQLException e) {
-	 			/*insertLogIntegracao("Erro ao cadastrar contatos do fornecedor: "
-	 					+ e.getMessage(), "Erro", fornecedorNome);*/
-
-	 			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar contatos do fornecedor: "
-	 					+ e.getMessage()+"', SYSDATE, 'Erro', "+codEmp+", '"+fornecedorId+"' FROM DUAL");
-	 			
-	 			e.printStackTrace();
-	 		} finally {
-	 			if (pstmt != null) {
-	 				pstmt.close();
-	 			}
 	 			jdbc.closeSession();
 	 		}
 	 	}
