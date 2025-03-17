@@ -1128,7 +1128,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 						}
 					} else {
 						this.selectsParaInsert
-								.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" Configurado para o local de pagamento: "          //erro aqui
+								.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" Configurado para o local de pagamento: "         
 										+ idExterno + "' , SYSDATE, 'Aviso', " + codemp + ", '' FROM DUAL");
 					}
 				}
@@ -1276,8 +1276,9 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage()
-					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage()
+//					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1338,8 +1339,9 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa: " + e.getMessage()
-					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa: " + e.getMessage()
+//					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1885,8 +1887,10 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage()
-					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage()
+//					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+			// Erro Ao Excluir Titulo
+			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -2074,43 +2078,83 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 
 		return listRet;
 	}
-
+	
+	
+	//retornarInformacoesContagemIdBaixa com ALIAS corrigido
 	public List<Object[]> retornarInformacoesContagemIdBaixa() throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-		List<Object[]> listRet = new ArrayList();
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+	    PreparedStatement pstmt = null;
+	    ResultSet rs = null;
+	    List<Object[]> listRet = new ArrayList();
 
-		try {
-			jdbc.openSession();
-			String sql = "\tSELECT COUNT(0) AS C, CODEMP, AD_BAIXAID FROM TGFFIN WHERE RECDESP = 1     AND PROVISAO = 'N'           AND DHBAIXA IS NOT NULL          AND AD_IDALUNO IS NOT NULL     GROUP BY CODEMP, AD_BAIXAID";
-			pstmt = jdbc.getPreparedStatement(sql);
-			rs = pstmt.executeQuery();
+	    try {
+	        jdbc.openSession();
+	        // CORREÇÃO: Adicionado alias para AD_BAIXAID
+	        String sql = "\tSELECT COUNT(0) AS C, CODEMP, AD_BAIXAID AS BAIXAID FROM TGFFIN WHERE RECDESP = 1 AND PROVISAO = 'N' AND DHBAIXA IS NOT NULL AND AD_IDALUNO IS NOT NULL GROUP BY CODEMP, AD_BAIXAID";
+	        pstmt = jdbc.getPreparedStatement(sql);
+	        rs = pstmt.executeQuery();
 
-			while (rs.next()) {
-				Object[] ret = new Object[3];
-				ret[0] = rs.getBigDecimal("CODEMP");
-				ret[1] = rs.getString("BAIXAID");
-				ret[2] = rs.getBigDecimal("C");
-				listRet.add(ret);
-			}
-		} catch (SQLException e) {
-			e.printStackTrace();
-		} finally {
-			if (rs != null) {
-				rs.close();
-			}
+	        while (rs.next()) {
+	            Object[] ret = new Object[3];
+	            ret[0] = rs.getBigDecimal("CODEMP");
+	            ret[1] = rs.getString("BAIXAID"); // Agora usando o alias correto
+	            ret[2] = rs.getBigDecimal("C");
+	            listRet.add(ret);
+	        }
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	    } finally {
+	        if (rs != null) {
+	            rs.close();
+	        }
+	        if (pstmt != null) {
+	            pstmt.close();
+	        }
+	        jdbc.closeSession();
+	    }
 
-			if (pstmt != null) {
-				pstmt.close();
-			}
-
-			jdbc.closeSession();
-		}
-
-		return listRet;
+	    return listRet;
 	}
+	
+
+//	public List<Object[]> retornarInformacoesContagemIdBaixa() throws Exception {
+//		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+//		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+//		PreparedStatement pstmt = null;
+//		ResultSet rs = null;
+//		List<Object[]> listRet = new ArrayList();
+//
+//		try {
+//			jdbc.openSession();
+//			String sql = "\tSELECT COUNT(0) AS C, CODEMP, AD_BAIXAID FROM TGFFIN WHERE RECDESP = 1     AND PROVISAO = 'N'           AND DHBAIXA IS NOT NULL          AND AD_IDALUNO IS NOT NULL     GROUP BY CODEMP, AD_BAIXAID";
+//			pstmt = jdbc.getPreparedStatement(sql);
+//			rs = pstmt.executeQuery();
+//
+//			while (rs.next()) {
+//				Object[] ret = new Object[3];
+//				ret[0] = rs.getBigDecimal("CODEMP");
+//
+//				ret[1] = rs.getString("BAIXAID");
+//				ret[2] = rs.getBigDecimal("C");
+//				listRet.add(ret);
+//			}
+//		} catch (SQLException e) {
+//			e.printStackTrace();
+//		} finally {
+//			if (rs != null) {
+//				rs.close();
+//			}
+//
+//			if (pstmt != null) {
+//				pstmt.close();
+//			}
+//
+//			jdbc.closeSession();
+//		}
+//
+//		return listRet;
+//	}
 
 	public List<Object[]> retornarInformacoesIdBaixaOrig() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
