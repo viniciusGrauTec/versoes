@@ -415,9 +415,9 @@ public class AcaoGetTituloFornecedorCarga implements AcaoRotinaJava, ScheduledAc
 			
 			jdbc.openSession();
 			
-			String query = "SELECT CODEMP, URL, TOKEN,INTEGRACAO "
-					+ "CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS TIPEMP "
-					+ "FROM AD_LINKSINTEGRACAO";
+			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO, " +  
+		              "CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS TIPEMP " +
+		              "FROM AD_LINKSINTEGRACAO";
 
 			pstmt = jdbc.getPreparedStatement(query);
 

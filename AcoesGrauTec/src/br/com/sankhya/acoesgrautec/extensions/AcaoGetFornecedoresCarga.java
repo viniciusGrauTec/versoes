@@ -189,7 +189,7 @@ public class AcaoGetFornecedoresCarga implements AcaoRotinaJava, ScheduledAction
 	 			jdbc.openSession();
 	 			
 	 		    // Modificado para incluir a verificação da flag INTEGRACAO 
-	 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO, PROFESSOR FROM AD_LINKSINTEGRACAO FROM AD_LINKSINTEGRACAO";
+	 			String query = "SELECT CODEMP, URL, TOKEN, INTEGRACAO, PROFESSOR FROM AD_LINKSINTEGRACAO";
 
 	 			pstmt = jdbc.getPreparedStatement(query);
 

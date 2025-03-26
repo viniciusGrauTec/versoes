@@ -30,8 +30,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import org.activiti.engine.impl.util.json.JSONArray;
 import org.cuckoo.core.ScheduledAction;
@@ -818,9 +820,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 								credorBairro, credorCidade, credorUf,
 								credorResidencial, credorCelular,
 								credorComercial, alunoNome, codEmp);
-						/*
-						 * insertLogIntegracao("Credor Cadastrado: ", "Sucesso",
-						 * credorNome, "");*/
+						
+						  if (credotAtual != null) {
+						        mapaInfParceiros.put(credorCpf.trim(), credotAtual);
+						    }
 						 
 						 insertCursoTurma(cursoDescricao, cursoId, turmaId,
 						 credorNome, alunoNome, codEmp);
@@ -842,6 +845,7 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 									alunoCpf, alunoCelular, alunoResidencial,
 									alunoEmail, alunoSituacao, alunoSituacaoId,
 									credorNome, codEmp, cursoDescricao, turmaId);
+							 mapaInfAlunos.put(alunoId.trim() + "###" + codEmp, new BigDecimal(1));
 							System.out.println("Entrou no cad aluno");
 							/*
 							 * insertLogIntegracao("Aluno Cadastro: ",
@@ -880,9 +884,10 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 									alunoCpf, alunoCelular, alunoResidencial,
 									alunoEmail, alunoSituacao, alunoSituacaoId,
 									credorNome, codEmp, cursoDescricao, turmaId);
+							 mapaInfAlunos.put(alunoId.trim() + "###" + codEmp, new BigDecimal(1));
 						
 						} else {
-							updateAluno(alunoSituacaoId, alunoSituacao, alunoId);          // Atualiza o aluno existente
+							updateAluno(alunoSituacaoId, alunoSituacao, alunoId, alunoEndereco, alunoCep, alunoBairro, alunoCidade, alunoUf);          // Atualiza o aluno existente
 						}
 
 						/*
@@ -1056,22 +1061,37 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 	
 	//Atualiza as informações de um aluno no banco de dados.
-	public void updateAluno(String idSituacao, String situacao, String idAluno)
-			throws Exception {
+	public void updateAluno(String idSituacao, String situacao, String idAluno, String endereco, String cep,
+			String bairro, String cidade, String uf) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
 		try {
 			jdbc.openSession();
 
-			String sqlUpd = "UPDATE AD_ALUNOS SET SITUACAO_ID = '" + idSituacao
-					+ "', SITUACAO = '" + situacao + "' WHERE ID_EXTERNO = '"
-					+ idAluno + "'";
+			String sqlUpd = "UPDATE AD_ALUNOS SET SITUACAO_ID = ?, SITUACAO = ?, "
+					+ "ENDERECO = ?, CEP = ?, BAIRRO = ?, CIDADE = ?, UF = ? " + "WHERE ID_EXTERNO = ?";
 
 			pstmt = jdbc.getPreparedStatement(sqlUpd);
+
+// Definindo os parâmetros de forma segura usando prepared statement
+			pstmt.setString(1, idSituacao);
+			pstmt.setString(2, situacao);
+			pstmt.setString(3, endereco);
+			pstmt.setString(4, cep);
+			pstmt.setString(5, bairro);
+			pstmt.setString(6, cidade);
+			pstmt.setString(7, uf);
+			pstmt.setString(8, idAluno);
+
 			pstmt.executeUpdate();
+
+			System.out.println("[DEBUG] Aluno atualizado com sucesso. ID_EXTERNO: " + idAluno);
 		} catch (SQLException e) {
+			System.err.println("[DEBUG] Erro ao atualizar aluno. ID_EXTERNO: " + idAluno);
+			System.err.println("[DEBUG] Mensagem de erro: " + e.getMessage());
 			e.printStackTrace();
+			throw e;
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1116,6 +1136,112 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 
 
 	
+//	public BigDecimal insertCredor(String credorNome, String credorCpf,
+//	        String credorEndereco, String credorCep, String credorBairro,
+//	        String credorCidade, String credorUf, String credorResidencial,
+//	        String credorCelular, String credorComercial, String alunoNome,
+//	        BigDecimal codemp)
+//	        throws Exception {
+//	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+//	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+//	    PreparedStatement pstmt = null;
+//	    PreparedStatement pstmtCheck = null;
+//	    ResultSet rs = null;
+//
+//	    EnviromentUtils util = new EnviromentUtils();
+//
+//	    BigDecimal atualCodparc = util.getMaxNumParc();
+//	    BigDecimal codCid = null;
+//
+//	    String tipPessoa = "";
+//
+//	    BigDecimal countBai = BigDecimal.ZERO;
+//	    BigDecimal codEnd = BigDecimal.ZERO;
+//	    BigDecimal codBai = BigDecimal.ZERO;
+//	    if (credorCpf.length() == 11) {
+//	        tipPessoa = "F";
+//	    } else if (credorCpf.length() == 14) {
+//	        tipPessoa = "J";
+//	    }
+//	    if ((credorBairro != null)
+//	            && (validarCadastroBairro(credorBairro, credorNome, alunoNome))) {
+//	        codBai = insertBairro(credorBairro, credorNome, alunoNome);
+//	        countBai = countBai.add(BigDecimal.ONE);
+//	    }
+//	    try {
+//	        jdbc.openSession();
+//	        
+//	        // Primeiro, verifica se a cidade existe e obter seu código
+//	        String checkCidadeSQL = "SELECT max(codcid) as codcid FROM tsicid WHERE " +
+//	            "TRANSLATE(UPPER(descricaocorreio), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+//	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE(UPPER(?), " +
+//	            "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') " +
+//	            "OR SUBSTR(UPPER(descricaocorreio), 1, INSTR(UPPER(descricaocorreio), ' ') - 1) " +
+//	            "LIKE TRANSLATE(UPPER(?), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+//	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')";
+//	            
+//	        pstmtCheck = jdbc.getPreparedStatement(checkCidadeSQL);
+//	        pstmtCheck.setString(1, credorCidade.trim());
+//	        pstmtCheck.setString(2, credorCidade.trim());
+//	        rs = pstmtCheck.executeQuery();
+//	        
+//	        if (rs.next()) {
+//	            codCid = rs.getBigDecimal("codcid");
+//	        }
+//	        
+//	        // Se a cidade não for encontrada, insere a cidade primeiro
+//	        if (codCid == null) {
+//	           
+//	            codCid = insertCidade(credorCidade, credorUf, jdbc);
+//	            
+//	            // Se ainda não conseguiu um código de cidade, registrar o erro e abortar
+//	            if (codCid == null) {
+//	                selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: Cidade não encontrada ou não pode ser criada: " 
+//	                    + credorCidade + "', SYSDATE, 'Erro', " + codemp + ", '" + credorNome + "' FROM DUAL");
+//	                return null;
+//	            }
+//	        }
+//
+//	        String sqlP = "INSERT INTO TGFPAR(CODPARC, NOMEPARC, RAZAOSOCIAL, TIPPESSOA, AD_ENDCREDOR, " +
+//	            "CODBAI, CODCID, CEP, TELEFONE, CGC_CPF, DTCAD, DTALTER, AD_FLAGALUNO) " +
+//	            "VALUES(?, ?, ?, ?, ?, NVL((select max(codbai) from tsibai where TRANSLATE(upper(nomebai), " +
+//	            "'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') " +
+//	            "like TRANSLATE(upper(?), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
+//	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC')), 0), ?, ?, ?, ?, SYSDATE, SYSDATE, 'S')";
+//
+//	        pstmt = jdbc.getPreparedStatement(sqlP);
+//	        pstmt.setBigDecimal(1, atualCodparc);
+//	        pstmt.setString(2, credorNome.toUpperCase());
+//	        pstmt.setString(3, credorNome.toUpperCase());
+//	        pstmt.setString(4, tipPessoa);
+//	        pstmt.setString(5, credorEndereco);
+//	        pstmt.setString(6, credorBairro);
+//	        pstmt.setBigDecimal(7, codCid);  // Usar o código da cidade que foi verificado ou criado
+//	        pstmt.setString(8, credorCep);
+//	        pstmt.setString(9, credorCelular);
+//	        pstmt.setString(10, credorCpf);
+//
+//	        pstmt.executeUpdate();
+//	    } catch (SQLException e) {
+//	        selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() 
+//	            + "', SYSDATE, 'Erro', " + codemp + ", '" + credorNome + "' FROM DUAL");
+//	        e.printStackTrace();
+//	        atualCodparc = null;
+//	    } finally {
+//	        if (rs != null) {
+//	            rs.close();
+//	        }
+//	        if (pstmtCheck != null) {
+//	            pstmtCheck.close();
+//	        }
+//	        if (pstmt != null) {
+//	            pstmt.close();
+//	        }
+//	        jdbc.closeSession();
+//	    }
+//	    return atualCodparc;
+//	}
+	
 	public BigDecimal insertCredor(String credorNome, String credorCpf,
 	        String credorEndereco, String credorCep, String credorBairro,
 	        String credorCidade, String credorUf, String credorResidencial,
@@ -1126,11 +1252,13 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 	    PreparedStatement pstmt = null;
 	    PreparedStatement pstmtCheck = null;
+	    PreparedStatement pstmtCredor = null;
 	    ResultSet rs = null;
+	    ResultSet rsCredor = null;
 
 	    EnviromentUtils util = new EnviromentUtils();
 
-	    BigDecimal atualCodparc = util.getMaxNumParc();
+	    BigDecimal atualCodparc = null;
 	    BigDecimal codCid = null;
 
 	    String tipPessoa = "";
@@ -1151,7 +1279,27 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	    try {
 	        jdbc.openSession();
 	        
-	        // Primeiro, verifica se a cidade existe e obter seu código
+	        // Verificar se o credor já existe pelo CPF/CNPJ
+	        String checkCredorSQL = "SELECT CODPARC FROM TGFPAR WHERE CGC_CPF = ?";
+	        pstmtCredor = jdbc.getPreparedStatement(checkCredorSQL);
+	        pstmtCredor.setString(1, credorCpf);
+	        rsCredor = pstmtCredor.executeQuery();
+	        
+	        // Se o credor já existe, retorna o CODPARC existente
+	        if (rsCredor.next()) {
+	            atualCodparc = rsCredor.getBigDecimal("CODPARC");
+	            System.out.println("[DEBUG] Credor já existe com CPF/CNPJ: " + credorCpf + ", CODPARC: " + atualCodparc);
+	            
+	            // Opcionalmente, você pode atualizar os dados do credor aqui se necessário
+	            // updateCredor(atualCodparc, credorNome, credorEndereco, ...);
+	            
+	            return atualCodparc;
+	        }
+	        
+	        // Se chegou aqui, o credor não existe e precisa ser inserido
+	        atualCodparc = util.getMaxNumParc();
+	        
+	        // Verificar se a cidade existe e obter seu código
 	        String checkCidadeSQL = "SELECT max(codcid) as codcid FROM tsicid WHERE " +
 	            "TRANSLATE(UPPER(descricaocorreio), 'áéíóúâêîôûàèìòùãõçÁÉÍÓÚÂÊÎÔÛÀÈÌÒÙÃÕÇ', " +
 	            "'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE(UPPER(?), " +
@@ -1202,14 +1350,22 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 	        pstmt.setString(10, credorCpf);
 
 	        pstmt.executeUpdate();
+	        System.out.println("[DEBUG] Novo credor inserido com CPF/CNPJ: " + credorCpf + ", CODPARC: " + atualCodparc);
 	    } catch (SQLException e) {
 	        selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro ao cadastrar credor: " + e.getMessage() 
 	            + "', SYSDATE, 'Erro', " + codemp + ", '" + credorNome + "' FROM DUAL");
+	        System.err.println("[DEBUG] Erro ao inserir credor: " + e.getMessage());
 	        e.printStackTrace();
 	        atualCodparc = null;
 	    } finally {
+	        if (rsCredor != null) {
+	            rsCredor.close();
+	        }
 	        if (rs != null) {
 	            rs.close();
+	        }
+	        if (pstmtCredor != null) {
+	            pstmtCredor.close();
 	        }
 	        if (pstmtCheck != null) {
 	            pstmtCheck.close();
@@ -2295,40 +2451,114 @@ public class AcaoGetCredorAlunoTurmaCursoCarga
 /**
  * Versão otimizada do método apiGet com melhor tratamento de erros e recursos
  */
-	 public String[] apiGet2(String ur, String token) throws Exception {
-		    BufferedReader reader;
-		    StringBuilder responseContent = new StringBuilder();
-		    String encodedUrl = ur.replace(" ", "%20");
-		    URL obj = new URL(encodedUrl);
-		    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
-		    System.out.println("Entrou na API");
-		    System.out.println("URL: " + encodedUrl);
-		    System.out.println("Token Enviado: [" + token + "]");
-		    https.setRequestMethod("GET");
-		    https.setRequestProperty("User-Agent", 
-		        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-		    https.setRequestProperty("Content-Type", 
-		        "application/json; charset=UTF-8");
-		    https.setRequestProperty("Accept", "application/json");
-		    https.setRequestProperty("Authorization", "Bearer " + token);
-		    https.setDoInput(true);
-		    int status = https.getResponseCode();
-		    if (status >= 300) {
-		      reader = new BufferedReader(new InputStreamReader(
-		            https.getErrorStream()));
-		    } else {
-		      reader = new BufferedReader(new InputStreamReader(
-		            https.getInputStream()));
-		    } 
-		    String line;
-		    while ((line = reader.readLine()) != null)
-		      responseContent.append(line); 
-		    reader.close();
-		    System.out.println("Output from Server .... \n" + status);
-		    String response = responseContent.toString();
-		    https.disconnect();
-		    return new String[] { Integer.toString(status), response };
-		  }
+//	 public String[] apiGet2(String ur, String token) throws Exception {
+//		    BufferedReader reader;
+//		    StringBuilder responseContent = new StringBuilder();
+//		    String encodedUrl = ur.replace(" ", "%20");
+//		    URL obj = new URL(encodedUrl);
+//		    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
+//		    System.out.println("Entrou na API");
+//		    System.out.println("URL: " + encodedUrl);
+//		    System.out.println("Token Enviado: [" + token + "]");
+//		    https.setRequestMethod("GET");
+//		    https.setRequestProperty("User-Agent", 
+//		        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+//		    https.setRequestProperty("Content-Type", 
+//		        "application/json; charset=UTF-8");
+//		    https.setRequestProperty("Accept", "application/json");
+//		    https.setRequestProperty("Authorization", "Bearer " + token);
+//		    https.setDoInput(true);
+//		    int status = https.getResponseCode();
+//		    if (status >= 300) {
+//		      reader = new BufferedReader(new InputStreamReader(
+//		            https.getErrorStream()));
+//		    } else {
+//		      reader = new BufferedReader(new InputStreamReader(
+//		            https.getInputStream()));
+//		    } 
+//		    String line;
+//		    while ((line = reader.readLine()) != null)
+//		      responseContent.append(line); 
+//		    reader.close();
+//		    System.out.println("Output from Server .... \n" + status);
+//		    String response = responseContent.toString();
+//		    https.disconnect();
+//		    return new String[] { Integer.toString(status), response };
+//		  }
+	
+	
+	//ainda em fase de teste
+	// Variáveis estáticas para controle de requisições
+	private static final int MAX_REQUESTS_PER_MINUTE = 60;
+	private static final long ONE_MINUTE_IN_MS = 60 * 1000;
+	private static final Queue<Long> requestTimestamps = new LinkedList<>();
+
+	public synchronized String[] apiGet2(String ur, String token) throws Exception {
+	    // Remover timestamps antigos (mais de 1 minuto)
+	    long currentTime = System.currentTimeMillis();
+	    requestTimestamps.removeIf(timestamp -> 
+	        currentTime - timestamp > ONE_MINUTE_IN_MS);
+
+	    // Verificar se atingiu o limite
+	    if (requestTimestamps.size() >= MAX_REQUESTS_PER_MINUTE) {
+	        // Calcula tempo de espera até que possa fazer nova requisição
+	        long oldestRequestTime = requestTimestamps.peek();
+	        long waitTime = ONE_MINUTE_IN_MS - (currentTime - oldestRequestTime);
+	        
+	        System.out.println("Limite de 60 requisições por minuto atingido. " +
+	                           "Aguardando " + waitTime + "ms");
+	        
+	        Thread.sleep(waitTime);
+	        
+	        // Limpa timestamps antigos novamente após espera
+	        requestTimestamps.removeIf(timestamp -> 
+	            currentTime - timestamp > ONE_MINUTE_IN_MS);
+	    }
+
+	    // Adiciona timestamp da requisição atual
+	    requestTimestamps.offer(System.currentTimeMillis());
+
+	    // Código original de requisição
+	    BufferedReader reader;
+	    StringBuilder responseContent = new StringBuilder();
+	    String encodedUrl = ur.replace(" ", "%20");
+	    
+	    URL obj = new URL(encodedUrl);
+	    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
+	    
+	    System.out.println("Entrou na API");
+	    System.out.println("URL: " + encodedUrl);
+	    System.out.println("Token Enviado: [" + token + "]");
+	    
+	    https.setRequestMethod("GET");
+	    https.setRequestProperty("User-Agent", 
+	        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+	    https.setRequestProperty("Content-Type", 
+	        "application/json; charset=UTF-8");
+	    https.setRequestProperty("Accept", "application/json");
+	    https.setRequestProperty("Authorization", "Bearer " + token);
+	    https.setDoInput(true);
+	    
+	    int status = https.getResponseCode();
+	    
+	    // Resto do código original de leitura da resposta
+	    reader = (status >= 300) 
+	        ? new BufferedReader(new InputStreamReader(https.getErrorStream()))
+	        : new BufferedReader(new InputStreamReader(https.getInputStream()));
+	    
+	    String line;
+	    while ((line = reader.readLine()) != null)
+	        responseContent.append(line);
+	    
+	    reader.close();
+	    
+	    System.out.println("Output from Server .... \n" + status);
+	    
+	    String response = responseContent.toString();
+	    https.disconnect();
+	    
+	    return new String[] { Integer.toString(status), response };
+	}
 
 	
 }
