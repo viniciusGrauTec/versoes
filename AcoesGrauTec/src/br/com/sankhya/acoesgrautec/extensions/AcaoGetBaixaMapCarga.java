@@ -6,6 +6,8 @@ import br.com.sankhya.extensions.actionbutton.ContextoAcao;
 import br.com.sankhya.extensions.actionbutton.Registro;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.dao.JdbcWrapper;
+import br.com.sankhya.modelcore.auth.AuthenticationInfo;
+import br.com.sankhya.modelcore.financeiro.helper.EstornoHelper;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -666,7 +668,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 
 	
 	
-	//BAIXA DOS CARTOES
+	//BAIXA DOS CARTOES  ATUALIZADO COM ESTORNO
 	public void efetuarBaixa(String[] response, String url, String token, BigDecimal codemp,
 			Map<String, BigDecimal> mapaInfIdBaixaOrig, Map<BigDecimal, String> mapaInfIdBaixa,
 			Map<String, BigDecimal> mapaInfTipoTituloTaxa, Map<String, BigDecimal> mapaInfBanco,
@@ -703,10 +705,22 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 		Map<BigDecimal, String> mapIdBaixaAtual = new HashMap();
 
 		try {
-			System.out.println("Teste: " + response[1]);
+			System.out.println("Verificando a resposta: " + response[1]);
 			JsonParser parser = new JsonParser();
+			
+			//apenas debug
+			if (response[1] == null) {
+			    System.out.println("Resposta nula.");
+			    return;
+			}
+			
+			//apenas debug
+			String jsonContent = response[1];
+			System.out.println("Primeiro caractere: " + (jsonContent.isEmpty() ? "vazio" : jsonContent.charAt(0)));
+			System.out.println("Último caractere: " + (jsonContent.isEmpty() ? "vazio" : jsonContent.charAt(jsonContent.length() - 1)));
+			
 
-			for (JsonElement jsonElement : parser.parse(response[1]).getAsJsonArray()) {
+			for (JsonElement jsonElement : parser.parse(response[1]).getAsJsonArray()) {   
 				JsonObject jsonObject = jsonElement.getAsJsonObject();
 				System.out.println("Titulo ID: " + jsonObject.get("titulo_id").getAsInt());
 				System.out.println("Valor da Baixa: " + jsonObject.get("baixa_valor").getAsString());
@@ -821,13 +835,29 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 							Date dtMinMovConta = (Date) mapaInfMenorDataMovBancariaPorConta
 									.get(Long.parseLong(codConta.toString()));
 							System.out.println("dtMinMovConta: " + dtMinMovConta);
+							System.out.println("Verificando dados de estorno - dataEstorno: " + dataEstorno);
+							System.out.println("Status de baixa do titulo: " + mapaInfFinanceiroBaixado.get(nufin));
 							if (dataEstorno != null) {
-								if ("S".equalsIgnoreCase((String) mapaInfFinanceiroBaixado.get(nufin))) {
-									nubco = (BigDecimal) mapaInfFinanceiroBanco.get(nufin);
-									this.updateFinExtorno(nufin, codemp);
-									this.deleteTgfMbc(nubco, codemp);
-									this.deleteTgfFin(nufin, codemp);
-								}
+								 if ("S".equalsIgnoreCase((String) mapaInfFinanceiroBaixado.get(nufin))) {
+								        System.out.println("[ESTORNO] Iniciando processo de estorno para NUFIN: " + nufin);
+								        nubco = (BigDecimal) mapaInfFinanceiroBanco.get(nufin);
+								        System.out.println("[ESTORNO] Valor de NUBCO recuperado: " + nubco);
+								        
+								        System.out.println("[ESTORNO] Chamando updateFinExtorno...");
+								        this.updateFinExtorno(nufin, codemp);
+								        System.out.println("[ESTORNO] updateFinExtorno concluído");
+								        
+								        System.out.println("[ESTORNO] Chamando deleteTgfMbc para NUBCO: " + nubco);
+								       // this.deleteTgfMbc(nubco, codemp); 
+								        System.out.println("[ESTORNO] deleteTgfMbc concluído");   
+								        
+								        System.out.println("[ESTORNO] Chamando deleteTgfFin para NUFIN: " + nufin);
+								        this.estornarTgfFin(nufin, codemp);  
+								        System.out.println("[ESTORNO] deleteTgfFin concluído");
+								        System.out.println("[ESTORNO] Processo de estorno finalizado com sucesso");
+								    } else {
+								        System.out.println("[ESTORNO] Estorno não realizado - Título não está baixado (status diferente de 'S')");
+								    }
 							} else if (dtMinMovConta != null) {
 								if (!data.equals(dtMinMovConta) && !data.after(dtMinMovConta)) {
 									this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Baixa Para o Titulo: " + nufin
@@ -842,7 +872,6 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 												|| nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
 											if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
 												
-												//modificacao aqui
 												this.updateFinCartao(codTipTit, nufin, codBanco, codConta, vlrBaixa, vlrDesconto, vlrJuros, vlrMulta, vlrOutrosAcrescimos, baixaId, codemp, codParc, dtCredito, nsu_Cartao, autorizacao);
 											} else {
 												System.out.println("Entrou no else do valor");
@@ -1049,8 +1078,6 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 																	&& !baixaIdAtual.equalsIgnoreCase(baixaId)) {
 														System.out.println("Baixa Dupla");
 														if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
-															
-															
 															/*
 															BigDecimal qtdParcelasAtuais = (BigDecimal) Optional
 															        .ofNullable((BigDecimal) mapaInfIdBaixaParcelas
@@ -1098,14 +1125,12 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 									} else if ("S".equalsIgnoreCase((String) mapaInfFinanceiroBaixado.get(nufin))) {
 										nubco = (BigDecimal) mapaInfFinanceiroBanco.get(nufin);
 										this.updateFinExtorno(nufin, codemp);
-										this.deleteTgfMbc(nubco, codemp);
-										this.deleteTgfFin(nufin, codemp);
+										//this.deleteTgfMbc(nubco, codemp); 				
 									}
 								} else if (codTipTit != null && codTipTit.compareTo(BigDecimal.ZERO) != 0
 										&& countBaixa > 0) {
 									System.out.println("contagem 2");
 									if (nsu_Cartao != null && !nsu_Cartao.isEmpty()) {
-										//modifcacao
 										this.insertFinCartao(nufin, vlrBaixa, codTipTit, codemp, codParc, dtCredito, baixaId);
 									} else {
 										BigDecimal nufinDup = this.insertFin(nufin, vlrBaixa, codTipTit, codemp);
@@ -1140,56 +1165,60 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			e.printStackTrace();
 			if (movBanc) {
 				this.updateFinExtorno(nufin, codemp);
-				this.deleteTgfMbc(nubco, codemp);
+				//this.deleteTgfMbc(nubco, codemp); 
 				System.out.println("Apagou mov bank");
 			}
 
 			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Mensagem de erro nas Baixas: " + e.getMessage()
 					+ "', SYSDATE, 'Erro', " + codemp + ", '" + idAluno + "' FROM DUAL");
+			
+			System.out.println("Erro de parse JSON: " + e.getMessage());
+		    System.out.println("Conteúdo que causou o erro: " + response[1]);
+		    throw e;
 		}
 
 	}
 
-	public String[] apiGet(String ur, String token) throws Exception {
-		StringBuilder responseContent = new StringBuilder();
-		URL obj = new URL(ur);
-		HttpURLConnection https = (HttpURLConnection) obj.openConnection();
-		System.out.println("Entrou na API");
-		System.out.println("URL: " + ur);
-		System.out.println("https: " + https);
-		System.out.println("token: " + token);
-		https.setRequestMethod("GET");
-		https.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
-		https.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-		https.setRequestProperty("Authorization", "Bearer " + token);
-		https.setDoOutput(true);
-		https.setDoInput(true);
-		int status = https.getResponseCode();
-		if (status >= 300) {
-			BufferedReader reader = new BufferedReader(new InputStreamReader(https.getErrorStream()));
-
-			String line;
-			while ((line = reader.readLine()) != null) {
-				responseContent.append(line);
-			}
-
-			reader.close();
-		} else {
-			BufferedReader reader = new BufferedReader(new InputStreamReader(https.getInputStream()));
-
-			String line;
-			while ((line = reader.readLine()) != null) {
-				responseContent.append(line);
-			}
-
-			reader.close();
-		}
-
-		System.out.println("Output from Server .... \n" + status);
-		String response = responseContent.toString();
-		https.disconnect();
-		return new String[] { Integer.toString(status), response };
-	}
+//	public String[] apiGet(String ur, String token) throws Exception {
+//		StringBuilder responseContent = new StringBuilder();
+//		URL obj = new URL(ur);
+//		HttpURLConnection https = (HttpURLConnection) obj.openConnection();
+//		System.out.println("Entrou na API");
+//		System.out.println("URL: " + ur);
+//		System.out.println("https: " + https);
+//		System.out.println("token: " + token);
+//		https.setRequestMethod("GET");
+//		https.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+//		https.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+//		https.setRequestProperty("Authorization", "Bearer " + token);
+//		https.setDoOutput(true);
+//		https.setDoInput(true);
+//		int status = https.getResponseCode();
+//		if (status >= 300) {
+//			BufferedReader reader = new BufferedReader(new InputStreamReader(https.getErrorStream()));
+//
+//			String line;
+//			while ((line = reader.readLine()) != null) {
+//				responseContent.append(line);
+//			}
+//
+//			reader.close();
+//		} else {
+//			BufferedReader reader = new BufferedReader(new InputStreamReader(https.getInputStream()));
+//
+//			String line;
+//			while ((line = reader.readLine()) != null) {
+//				responseContent.append(line);
+//			}
+//
+//			reader.close();
+//		}
+//
+//		System.out.println("Output from Server .... \n" + status);
+//		String response = responseContent.toString();
+//		https.disconnect();
+//		return new String[] { Integer.toString(status), response };
+//	}
 
 	public String[] apiGet2(String ur, String token) throws Exception {
 		StringBuilder responseContent = new StringBuilder();
@@ -1263,6 +1292,45 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 
 	}
 
+	
+	/**
+	 * Método para estornar um título financeiro
+	 */
+	public void estornarTgfFin(BigDecimal nufin, BigDecimal codemp) throws Exception {
+	    EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+	    JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+
+	    try {
+	        jdbc.openSession();
+	        
+	        // Configurando os parâmetros de estorno
+	        EstornoHelper.EstornoParam estornoParam = new EstornoHelper.EstornoParam();
+	        estornoParam.setNuFin(nufin);
+	        estornoParam.setRecompoe(true);
+	        estornoParam.setTodosAntecipacao(false);
+	        estornoParam.setResourceID("0");  //resourceID eh citado no log mas como o usario eh SUP ele nao da erro
+	        estornoParam.setIgnorarValidacaoUsuarioCaixa(false);
+	        estornoParam.setContaParaCaixaAberto(BigDecimal.ZERO);
+	        
+	        // Obtém informações de autenticação atual
+	        AuthenticationInfo auth = AuthenticationInfo.getCurrent();   //como o usario sempre será SUP não precisa de autenticação
+	        
+	        // Cria o helper de estorno e executa o estorno do título
+	        EstornoHelper estornoHelper = new EstornoHelper(entityFacade);
+	        estornoHelper.estornarTitulo(auth, entityFacade, jdbc, estornoParam);
+	        
+	        System.out.println("Título estornado com sucesso: " + nufin);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        // Registrando o erro de estorno usando o mesmo formato do método original
+	        this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Estornar Título: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+	        throw e; // Relançando a exceção para indicar o erro
+	    } finally {
+	        jdbc.closeSession();
+	    }
+	}
+
+
 	public void deleteTgfMbc(BigDecimal nubco, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1276,8 +1344,8 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage()
-//					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage()
+					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
 			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
 		} finally {
 			if (pstmt != null) {
@@ -1288,6 +1356,7 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 		}
 
 	}
+	
 
 	public void updateFinExtorno(BigDecimal nufin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1873,33 +1942,37 @@ public class AcaoGetBaixaMapCarga implements AcaoRotinaJava, ScheduledAction {
 
 		return listRet;
 	}
-
-	public void deleteTgfFin(BigDecimal nufin, BigDecimal codemp) throws Exception {
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-
-		try {
-			jdbc.openSession();
-			String sqlNota = "DELETE FROM TGFFIN WHERE NUFIN = " + nufin;
-			pstmt = jdbc.getPreparedStatement(sqlNota);
-			pstmt.executeUpdate();
-			System.out.println("Passou do update");
-		} catch (SQLException e) {
-			e.printStackTrace();
-//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage()
-//					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
-			// Erro Ao Excluir Titulo
-			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
-		} finally {
-			if (pstmt != null) {
-				pstmt.close();
-			}
-
-			jdbc.closeSession();
-		}
-
-	}
+	
+	
+	
+//	public void deleteTgfFin(BigDecimal nufin, BigDecimal codemp) throws Exception {
+//		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+//		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+//		PreparedStatement pstmt = null;
+//
+//		try {
+//			jdbc.openSession();
+//			String sqlNota = "DELETE FROM TGFFIN WHERE NUFIN = " + nufin;
+//			pstmt = jdbc.getPreparedStatement(sqlNota);
+//			pstmt.executeUpdate();
+//			System.out.println("Passou do update");
+//		} catch (SQLException e) {
+//			e.printStackTrace();
+////			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage()
+////					+ "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+//			// Erro Ao Excluir Titulo
+//			this.selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: " + e.getMessage().replace("'", "''") + "' , SYSDATE, 'Erro', " + codemp + ", '' FROM DUAL");
+//		} finally {
+//			if (pstmt != null) {
+//				pstmt.close();
+//			}
+//
+//			jdbc.closeSession();
+//		}
+//
+//	}
+	
+	
 	
 	   public BigDecimal insertFin(BigDecimal nufinOrig, BigDecimal vlrDesdob, BigDecimal codTipTit, BigDecimal codemp) throws Exception {
 	        EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();

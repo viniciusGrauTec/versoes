@@ -1175,42 +1175,99 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 	/**
 	 * Versão otimizada do método apiGet com melhor tratamento de erros e recursos
 	 */
-		 public String[] apiGet2(String ur, String token) throws Exception {
-			    BufferedReader reader;
-			    StringBuilder responseContent = new StringBuilder();
-			    String encodedUrl = ur.replace(" ", "%20");
-			    URL obj = new URL(encodedUrl);
-			    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
-			    System.out.println("Entrou na API");
-			    System.out.println("URL: " + encodedUrl);
-			    System.out.println("Token Enviado: [" + token + "]");
-			    https.setRequestMethod("GET");
-			    https.setRequestProperty("User-Agent", 
-			        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-			    https.setRequestProperty("Content-Type", 
-			        "application/json; charset=UTF-8");
-			    https.setRequestProperty("Accept", "application/json");
-			    https.setRequestProperty("Authorization", "Bearer " + token);
-			    https.setDoInput(true);
-			    int status = https.getResponseCode();
-			    if (status >= 300) {
-			      reader = new BufferedReader(new InputStreamReader(
-			            https.getErrorStream()));
-			    } else {
-			      reader = new BufferedReader(new InputStreamReader(
-			            https.getInputStream()));
-			    } 
-			    String line;
-			    while ((line = reader.readLine()) != null)
-			      responseContent.append(line); 
-			    reader.close();
-			    System.out.println("Output from Server .... \n" + status);
-			    String response = responseContent.toString();
-			    https.disconnect();
-			    return new String[] { Integer.toString(status), response };
-			  }
+//		 public String[] apiGet2(String ur, String token) throws Exception {
+//			    BufferedReader reader;
+//			    StringBuilder responseContent = new StringBuilder();
+//			    String encodedUrl = ur.replace(" ", "%20");
+//			    URL obj = new URL(encodedUrl);
+//			    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
+//			    System.out.println("Entrou na API");
+//			    System.out.println("URL: " + encodedUrl);
+//			    System.out.println("Token Enviado: [" + token + "]");
+//			    https.setRequestMethod("GET");
+//			    https.setRequestProperty("User-Agent", 
+//			        "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+//			    https.setRequestProperty("Content-Type", 
+//			        "application/json; charset=UTF-8");
+//			    https.setRequestProperty("Accept", "application/json");
+//			    https.setRequestProperty("Authorization", "Bearer " + token);
+//			    https.setDoInput(true);
+//			    int status = https.getResponseCode();
+//			    if (status >= 300) {
+//			      reader = new BufferedReader(new InputStreamReader(
+//			            https.getErrorStream()));
+//			    } else {
+//			      reader = new BufferedReader(new InputStreamReader(
+//			            https.getInputStream()));
+//			    } 
+//			    String line;
+//			    while ((line = reader.readLine()) != null)
+//			      responseContent.append(line); 
+//			    reader.close();
+//			    System.out.println("Output from Server .... \n" + status);
+//			    String response = responseContent.toString();
+//			    https.disconnect();
+//			    return new String[] { Integer.toString(status), response };
+//			  }
+	
+	public String[] apiGet2(String ur, String token) throws Exception {
+	    BufferedReader reader;
+	    StringBuilder responseContent = new StringBuilder();
+	    String encodedUrl = ur.replace(" ", "%20");
+	    URL obj = new URL(encodedUrl);
+	    HttpURLConnection https = (HttpURLConnection)obj.openConnection();
+	    System.out.println("Entrou na API");
+	    System.out.println("URL: " + encodedUrl);
+	    System.out.println("Token Enviado: [" + token + "]");
+	    https.setRequestMethod("GET");
+	    https.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+	    https.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+	    https.setRequestProperty("Accept", "application/json");
+	    https.setRequestProperty("Authorization", "Bearer " + token);
+	    https.setDoInput(true);
+
+	    int status = https.getResponseCode();
+
+	    // Se o status for 429, implemente a lógica de backoff
+	    if (status == 429) {
+	        // Tenta ler o cabeçalho Retry-After, se disponível
+	        String retryAfter = https.getHeaderField("Retry-After");
+	        int waitTime = 5; // valor padrão em segundos
+	        if (retryAfter != null) {
+	            try {
+	                waitTime = Integer.parseInt(retryAfter);
+	            } catch (NumberFormatException e) {
+	                // Use o tempo padrão se a conversão falhar
+	            }
+	        }
+	        System.out.println("Limite atingido. Aguardando " + waitTime + " segundos antes de tentar novamente.");
+	        Thread.sleep(waitTime * 1000L);
+	        https.disconnect();
+	        // Aqui você pode optar por recursão ou um loop para tentar novamente
+	        return apiGet2(ur, token);
+	    }
+
+	    if (status >= 300) {
+	        reader = new BufferedReader(new InputStreamReader(https.getErrorStream()));
+	    } else {
+	        reader = new BufferedReader(new InputStreamReader(https.getInputStream()));
+	    }
+	    String line;
+	    while ((line = reader.readLine()) != null) {
+	        responseContent.append(line);
+	    }
+	    reader.close();
+	    System.out.println("Output from Server .... \n" + status);
+	    String response = responseContent.toString();
+	    https.disconnect();
+	    return new String[] { Integer.toString(status), response };
+	}
+
 		 
 
+		 
+		 
+     //mudar para dynamicVO
 	public void insertFinByList(StringBuilder listInsert, BigDecimal codemp) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1284,6 +1341,9 @@ public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
 
 	}
 
+	
+	
+	 //mudar para dynamicVO
 	public BigDecimal insertFin(BigDecimal codemp, BigDecimal codCenCus,
 			BigDecimal codNat, BigDecimal codTipOper, BigDecimal codparc,
 			BigDecimal codTipTit, BigDecimal vlrDesdbo, String dtVenc,
