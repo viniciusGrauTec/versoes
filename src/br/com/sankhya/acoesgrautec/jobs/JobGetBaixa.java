@@ -50,7 +50,7 @@ public class JobGetBaixa implements ScheduledAction {
 		 String matricula = "";
 		 
 		 int count = 0;
-		 System.out.println("Iniciou baixa carga empresa 3");
+		 System.out.println("Iniciou baixa carga empresa 4");
 		try {
 
 			jdbc.openSession();
@@ -59,7 +59,7 @@ public class JobGetBaixa implements ScheduledAction {
 			String query3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
 			String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_BAIXA, 'N') = 'N'";
 
-			pstmt = jdbc.getPreparedStatement(query3);
+			pstmt = jdbc.getPreparedStatement(query4);
 
 			rs = pstmt.executeQuery();
 
@@ -76,7 +76,7 @@ public class JobGetBaixa implements ScheduledAction {
 			    iterarEndpoint(url, token, codEmp, matricula);
 				updateCarga(idCarga);
 			}
-			System.out.println("Chegou ao final da baixa carga empresa 3");
+			System.out.println("Chegou ao final da baixa carga empresa 4");
 			
 			/*if(count == 0){
 				resetCarga(codEmp);

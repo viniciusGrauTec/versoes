@@ -75,10 +75,12 @@ public class JobGetCredorAlunoTurmaCurso
 			jdbc.openSession();
 
 			//String queryEmp3 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO, 'N') = 'N' AND ROWNUM <= 300";
-			String queryEmp3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-			String queryEmp4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO, 'N') = 'N' AND ROWNUM <= 300";
+			String queryEmp = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
+			//String queryEmp3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
+			//String queryEmp4 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 4";
+			//String queryEmp4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO, 'N') = 'N' AND ROWNUM <= 300";
 
-			pstmt = jdbc.getPreparedStatement(queryEmp3);
+			pstmt = jdbc.getPreparedStatement(queryEmp);
 
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
@@ -97,7 +99,7 @@ public class JobGetCredorAlunoTurmaCurso
 			}
 
 			System.out.println("Finalizou cadastro dos alunos empresa 3");
-
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 			try {
@@ -209,7 +211,7 @@ public class JobGetCredorAlunoTurmaCurso
 		SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
 
 		String dataFormatada = formato.format(dataAtual);
-		dataFormatada = "2024-09-16";
+		//dataFormatada = "2024-10-14";
 
 		int paginaInicio = 1;
 		int paginaFim = 1;
@@ -473,6 +475,10 @@ public class JobGetCredorAlunoTurmaCurso
 						: jsonObject.getAsJsonArray("cursos").get(0)
 								.getAsJsonObject().get("curso_id")
 								.getAsString();
+				
+				if(cursoId.equals("00001")){
+					cursoId = "00023";
+				}
 
 				String turmaId = jsonObject.getAsJsonArray("cursos").get(0)
 						.getAsJsonObject().get("turma_id").isJsonNull() ? null
@@ -509,17 +515,17 @@ public class JobGetCredorAlunoTurmaCurso
 					 */
 					System.out.println("entrou na validação de cadastro");
 					if (!credor) {
-						/*BigDecimal credotAtual = insertCredor(credorNome,
+						BigDecimal credotAtual = insertCredor(credorNome,
 								credorCpf, credorEndereco, credorCep,
 								credorBairro, credorCidade, credorUf,
 								credorResidencial, credorCelular,
-								credorComercial, alunoNome);*/
+								credorComercial, alunoNome);
 						/*
 						 * insertLogIntegracao("Credor Cadastrado: ", "Sucesso",
 						 * credorNome, "");*/
 						 
-						 /*insertCursoTurma(cursoDescricao, cursoId, turmaId,
-						 credorNome, alunoNome, codEmp);*/
+						 insertCursoTurma(cursoDescricao, cursoId, turmaId,
+						 credorNome, alunoNome, codEmp);
 						 
 
 						System.out.println("ID EXTERNO: " + cursoId);
@@ -531,13 +537,13 @@ public class JobGetCredorAlunoTurmaCurso
 								+ ": alunoId");
 						
 						if (!aluno) {
-							/*insertAluno(credotAtual, alunoId, alunoNome,
+							insertAluno(credotAtual, alunoId, alunoNome,
 									alunoNomeSocial, alunoEndereco, alunoCep,
 									alunoBairro, alunoCidade, alunoUf,
 									alunoSexo, alunoDataNascimento, alunoRg,
 									alunoCpf, alunoCelular, alunoResidencial,
 									alunoEmail, alunoSituacao, alunoSituacaoId,
-									credorNome, codEmp, cursoId);*/
+									credorNome, codEmp, cursoId);
 							System.out.println("Entrou no cad aluno");
 							/*
 							 * insertLogIntegracao("Aluno Cadastro: ",
@@ -559,8 +565,8 @@ public class JobGetCredorAlunoTurmaCurso
 						BigDecimal credorCadastrado = mapaInfParceiros
 								.get(credorCpf);// getCredorCadastrado(credorCpf);
 
-						/*insertCursoTurma(cursoDescricao, cursoId, turmaId,
-								credorNome, alunoNome, codEmp);*/
+						insertCursoTurma(cursoDescricao, cursoId, turmaId,
+								credorNome, alunoNome, codEmp);
 						/*
 						 * insertLogIntegracao("Curso e turma cadastrado",
 						 * "Sucesso", "", "");
@@ -569,19 +575,19 @@ public class JobGetCredorAlunoTurmaCurso
 								+ ": alunoId");
 						if (!aluno) {
 							System.out.println("Entrou no cad aluno");
-							/*insertAluno(credorCadastrado, alunoId, alunoNome,
+							insertAluno(credorCadastrado, alunoId, alunoNome,
 									alunoNomeSocial, alunoEndereco, alunoCep,
 									alunoBairro, alunoCidade, alunoUf,
 									alunoSexo, alunoDataNascimento, alunoRg,
 									alunoCpf, alunoCelular, alunoResidencial,
 									alunoEmail, alunoSituacao, alunoSituacaoId,
-									credorNome, codEmp, cursoId);*/
+									credorNome, codEmp, cursoId);
 							/*
 							 * insertLogIntegracao("Aluno já Cadastro ",
 							 * "Aviso", "", alunoNome);
 							 */
 						} else {
-							//updateAluno(alunoSituacaoId, alunoSituacao, alunoId);
+							updateAluno(alunoSituacaoId, alunoSituacao, alunoId);
 						}
 
 						/*

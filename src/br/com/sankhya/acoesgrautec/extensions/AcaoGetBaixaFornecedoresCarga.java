@@ -1,6 +1,10 @@
-package br.com.sankhya.acoesgrautec.jobs;
+package br.com.sankhya.acoesgrautec.extensions;
 
 import br.com.sankhya.acoesgrautec.services.SkwServicoCompras;
+import br.com.sankhya.acoesgrautec.util.EnviromentUtils;
+import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava;
+import br.com.sankhya.extensions.actionbutton.ContextoAcao;
+import br.com.sankhya.extensions.actionbutton.Registro;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.core.JapeSession;
 import br.com.sankhya.jape.core.JapeSession.SessionHandle;
@@ -22,6 +26,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -33,7 +39,189 @@ import java.util.Optional;
 import org.cuckoo.core.ScheduledAction;
 import org.cuckoo.core.ScheduledActionContext;
 
-public class JobGetBaixaFornecedores implements ScheduledAction {
+public class AcaoGetBaixaFornecedoresCarga implements AcaoRotinaJava, ScheduledAction {
+	
+	private List<String> selectsParaInsert = new ArrayList<String>();
+	private EnviromentUtils util = new EnviromentUtils();
+	
+	@Override
+	public void doAction(ContextoAcao contexto) throws Exception {
+		
+		Registro[] linhas = contexto.getLinhas();
+		Registro registro = linhas[0];
+		
+		String url = (String) registro.getCampo("URL");
+		String token = (String) registro.getCampo("TOKEN");
+		BigDecimal codEmp = (BigDecimal) registro.getCampo("CODEMP");
+		
+		String dataInicio = contexto.getParam("DTINICIO").toString().substring(0, 10);
+		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
+		String idForn = (String) contexto.getParam("IDFORN");
+		
+		
+		try{
+			//contexto.setMensagemRetorno("Data inicio: " + dataInicio + "\nData Fim: " + dataFim);
+			
+			// Banco
+			List<Object[]> listInfBancoConta = retornarInformacoesBancoConta();
+			Map<String, BigDecimal> mapaInfBanco = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfBancoConta) {
+				Long codEmpObj = (Long) obj[1];
+				String idExternoObj = (String) obj[2];
+				BigDecimal codBcoObj = (BigDecimal) obj[3];
+
+				if (mapaInfBanco.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfBanco.put(codEmpObj + "###" + idExternoObj, codBcoObj);
+				}
+			}
+
+			// Conta
+			Map<String, BigDecimal> mapaInfConta = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfBancoConta) {
+				BigDecimal codCtabCointObj = (BigDecimal) obj[0];
+				Long codEmpObj = (Long) obj[1];
+				String idExternoObj = (String) obj[2];
+
+				if (mapaInfConta.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfConta.put(codEmpObj + "###" + idExternoObj,
+							codCtabCointObj);
+				}
+			}
+
+			// Financeiro
+			List<Object[]> listInfFinanceiro = retornarInformacoesFinanceiro();
+			Map<String, BigDecimal> mapaInfFinanceiro = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal codEmpObj = (BigDecimal) obj[1];
+				String idExternoObj = (String) obj[2];
+
+				if (mapaInfFinanceiro.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfFinanceiro.put(codEmpObj + "###" + idExternoObj, nuFin);
+				}
+			}
+
+			// NuFin Baixados
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado = new HashMap<BigDecimal, String>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				String baixado = (String) obj[3];
+				if (mapaInfFinanceiroBaixado.get(nuFin) == null) {
+					mapaInfFinanceiroBaixado.put(nuFin, baixado);
+				}
+
+			}
+
+			// Valor Desdobramento
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor = new HashMap<BigDecimal, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal vlrDesdob = (BigDecimal) obj[4];
+				if (mapaInfFinanceiroValor.get(nuFin) == null) {
+					mapaInfFinanceiroValor.put(nuFin, vlrDesdob);
+				}
+
+			}
+
+			// Nro Banco
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco = new HashMap<BigDecimal, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal nuBco = (BigDecimal) obj[5];
+				if (mapaInfFinanceiroBanco.get(nuFin) == null) {
+					mapaInfFinanceiroBanco.put(nuFin, nuBco);
+				}
+
+			}
+
+			// Tipo de Titulo
+			List<Object[]> listInfTipoTitulo = retornarInformacoesTipoTitulo();
+			Map<String, BigDecimal> mapaInfTipoTitulo = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfTipoTitulo) {
+				BigDecimal codTipTit = (BigDecimal) obj[0];
+				Long codEmpObj = (Long) obj[1];
+				String idExternoObj = (String) obj[2];
+
+				if (mapaInfTipoTitulo.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfTipoTitulo.put(codEmpObj + "###" + idExternoObj,
+							codTipTit);
+				}
+			}
+
+			// Tipo de Titulo Taxa
+			Map<String, BigDecimal> mapaInfTipoTituloTaxa = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfTipoTitulo) {
+				BigDecimal taxa = (BigDecimal) obj[3];
+				Long codEmpObj = (Long) obj[1];
+				String idExternoObj = (String) obj[2];
+
+				if (mapaInfTipoTituloTaxa.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfTipoTituloTaxa.put(codEmpObj + "###" + idExternoObj,
+							taxa);
+				}
+			}
+
+			// Menor Movimentaï¿½ï¿½o Bancï¿½ria Por Conta
+			List<Object[]> listInfMenorDataMovBancariaPorConta = retornarInformacoesMenorDataMovBancariaPorConta();
+			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta = new HashMap<Long, Date>();
+			for (Object[] obj : listInfMenorDataMovBancariaPorConta) {
+				Long codCtabCointObj = (Long) obj[0];
+				Date dtMinRef = (Date) obj[1];
+
+				if (mapaInfMenorDataMovBancariaPorConta.get(codCtabCointObj) == null) {
+					mapaInfMenorDataMovBancariaPorConta.put(codCtabCointObj,
+							dtMinRef);
+				}
+			}
+			
+
+			iterarEndpoint(url, token, codEmp, mapaInfTipoTituloTaxa, mapaInfBanco,
+					mapaInfConta, mapaInfFinanceiro, mapaInfTipoTitulo,
+					mapaInfMenorDataMovBancariaPorConta, mapaInfFinanceiroBaixado,
+					mapaInfFinanceiroValor, mapaInfFinanceiroBanco, dataInicio, dataFim, idForn);
+			
+			contexto.setMensagemRetorno("Periodo Processado!");
+			
+		}catch(Exception e){
+			e.printStackTrace();
+			contexto.mostraErro(e.getMessage());
+		}finally{
+
+			if(selectsParaInsert.size() > 0){
+				
+				StringBuilder msgError = new StringBuilder();
+				
+				System.out.println("Entrou na lista do finally: " + selectsParaInsert.size());
+				
+				//int idInicial = util.getMaxNumLog();
+				
+				int qtdInsert = selectsParaInsert.size();
+				
+				int i = 1;
+				for (String sqlInsert : selectsParaInsert) {
+					String sql = sqlInsert;
+					int nuFin = util.getMaxNumLog();
+					sql = sql.replace("<#NUMUNICO#>", String.valueOf(nuFin));
+					msgError.append(sql);
+
+					if (i < qtdInsert) {
+						msgError.append(" \nUNION ALL ");
+					}
+					i++;
+				}
+				
+				System.out.println("Consulta de log: \n" + msgError);
+				insertLogList(msgError.toString(), codEmp);
+				
+			}
+		
+		
+		}
+		
+
+	}
+	
+	@Override
 	public void onTime(ScheduledActionContext arg0) {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -147,7 +335,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 				}
 			}
 
-			// Menor Movimentação Bancária Por Conta
+			// Menor Movimentaï¿½ï¿½o Bancï¿½ria Por Conta
 			List<Object[]> listInfMenorDataMovBancariaPorConta = retornarInformacoesMenorDataMovBancariaPorConta();
 			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta = new HashMap<Long, Date>();
 			for (Object[] obj : listInfMenorDataMovBancariaPorConta) {
@@ -163,8 +351,6 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			jdbc.openSession();
 
 			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
-//			String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-//			String query4 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 4";
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 			pstmt = jdbc.getPreparedStatement(query);
 
@@ -206,6 +392,48 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 				}
 			}
 			jdbc.closeSession();
+			
+			if(selectsParaInsert.size() > 0){
+				
+				StringBuilder msgError = new StringBuilder();
+				
+				System.out.println("Entrou na lista do finally: " + selectsParaInsert.size());
+				
+				//int idInicial = util.getMaxNumLog();
+				
+				int qtdInsert = selectsParaInsert.size();
+				
+				int i = 1;
+				for (String sqlInsert : selectsParaInsert) {
+					String sql = sqlInsert;
+					int nuFin = 0;
+					
+					try {
+						nuFin = util.getMaxNumLog();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					
+					sql = sql.replace("<#NUMUNICO#>", String.valueOf(nuFin));
+					msgError.append(sql);
+
+					if (i < qtdInsert) {
+						msgError.append(" \nUNION ALL ");
+					}
+					i++;
+				}
+				
+				System.out.println("Consulta de log: \n" + msgError);
+				try {
+					insertLogList(msgError.toString(), codEmp);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				msgError = null;
+				this.selectsParaInsert = new ArrayList<String>();
+				
+			}
 		}
 	}
 	
@@ -219,61 +447,107 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta,
 			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor,
-			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco) throws Exception {
-		// int pagina = 1;
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
+			String dataInicio, String dataFim, String idForn) throws Exception {
 
+		//Date dataAtual = new Date();
+
+		//dataFormatada = "2024-10-14";
+
+		try {
+
+			 // Convertendo as Strings para LocalDate
+	        LocalDate inicio = LocalDate.parse(dataInicio);
+	        LocalDate fim = LocalDate.parse(dataFim);
+
+	        // Loop para percorrer o intervalo de dias
+	        LocalDate atual = inicio;
+	        
+	        String[] response = null;
+	        
+			while (!atual.isAfter(fim)) {
+				
+				String dataAtual = atual.toString();
+				//System.out.println("Data atual da iteraï¿½ï¿½o: " + dataAtual);
+				
+				if(idForn != null && !idForn.isEmpty()){
+
+					response = apiGet(url + "/financeiro" + "/clientes"
+							+ "/titulos-pagar-baixa" + "?quantidade=0"
+							+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+							+ dataAtual + " 23:59:59"
+							+ "&fornecedor=" + idForn
+							, token);
+
+				}else{
+
+					response = apiGet(url + "/financeiro" + "/clientes"
+							+ "/titulos-pagar-baixa" + "?quantidade=0"
+							+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+							+ dataAtual + " 23:59:59", token);
+
+				}
+				
+				int status = Integer.parseInt(response[0]);
+
+				System.out.println("Status teste: " + status);
+
+				String responseString = response[1];
+				System.out.println("response string baixas: " + responseString);
+
+				efetuarBaixa(response, url, token, codemp,
+						mapaInfTipoTituloTaxa, mapaInfBanco, mapaInfConta,
+						mapaInfFinanceiro, mapaInfTipoTitulo,
+						mapaInfMenorDataMovBancariaPorConta,
+						mapaInfFinanceiroBaixado, mapaInfFinanceiroValor,
+						mapaInfFinanceiroBanco);
+
+				// Incrementa para o prï¿½ximo dia
+				atual = atual.plusDays(1);
+			}
+	
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void iterarEndpoint(String url, String token, BigDecimal codemp,
+			Map<String, BigDecimal> mapaInfTipoTituloTaxa, 
+			Map<String, BigDecimal> mapaInfBanco,
+			Map<String, BigDecimal> mapaInfConta,
+			Map<String, BigDecimal> mapaInfFinanceiro,
+			Map<String, BigDecimal> mapaInfTipoTitulo,
+			Map<Long, Date> mapaInfMenorDataMovBancariaPorConta,
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroValor,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco) throws Exception {
+		
 		Date dataAtual = new Date();
 
 		SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
 
 		String dataFormatada = formato.format(dataAtual);
-		//dataFormatada = "2024-10-14";
-
-		int paginaInicio = 1;
-		int paginaFim = 30;
-		/*
-		 * int paginaAtual = getPagina();
-		 * 
-		 * if(paginaAtual == 0){ paginaInicio = 1; paginaFim = 30; }else{
-		 * paginaInicio = paginaAtual; paginaFim = paginaAtual + 30; }
-		 */
-
+		
 		try {
-			//for (;;) {
-				//System.out.println("While de iteração");
-				
+
 			String[] response = apiGet(url + "/financeiro" + "/clientes"
 					+ "/titulos-pagar-baixa" + "?quantidade=0"
-					+ "&dataInicial="+dataFormatada+" 00:00:00&dataFinal="+dataFormatada+" 23:59:59"
-					,token);
+					+ "&dataInicial=" + dataFormatada + " 00:00:00&dataFinal="
+					+ dataFormatada + " 23:59:59", token);
 
-				int status = Integer.parseInt(response[0]);
+			int status = Integer.parseInt(response[0]);
 
-				System.out.println("Status teste: " + status);
-				System.out.println("pagina: " + paginaInicio);
+			System.out.println("Status teste: " + status);
 
-				String responseString = response[1];
-				System.out.println("response string baixas: " + responseString);
+			String responseString = response[1];
+			System.out.println("response string baixas: " + responseString);
 
-//				if ((responseString.equals("[]"))
-//						|| (paginaInicio == paginaFim)) {
-//					
-//					System.out.println("Entrou no if da quebra");
-//					/*
-//					 * if(responseString.equals("[]")){
-//					 * insertUltPagina(paginaInicio); }else{
-//					 * insertUltPagina(paginaFim); }
-//					 */
-//
-//					break;
-//				}
-				efetuarBaixa(response, url, token, codemp, mapaInfTipoTituloTaxa, 
-						mapaInfBanco, mapaInfConta, 
-						mapaInfFinanceiro, mapaInfTipoTitulo, mapaInfMenorDataMovBancariaPorConta,
-						mapaInfFinanceiroBaixado, mapaInfFinanceiroValor, mapaInfFinanceiroBanco);
-				
-				//paginaInicio++;
-			//}
+			efetuarBaixa(response, url, token, codemp, mapaInfTipoTituloTaxa,
+					mapaInfBanco, mapaInfConta, mapaInfFinanceiro,
+					mapaInfTipoTitulo, mapaInfMenorDataMovBancariaPorConta,
+					mapaInfFinanceiroBaixado, mapaInfFinanceiroValor,
+					mapaInfFinanceiroBanco);
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -308,11 +582,6 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		
 		BigDecimal nufin = BigDecimal.ZERO;
 		
-//		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-//		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-//		PreparedStatement pstmt = null;
-//		ResultSet rs = null;
-
 		String dataEstorno = "";
 
 		SkwServicoCompras sc = null;
@@ -325,28 +594,19 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 
 		String domain = "http://127.0.0.1:8501";
 		
+		String formaDePagamento = "";
+		
 		int count = 0;
 		
+		EnviromentUtils util = new EnviromentUtils();
+		
 		try {
-//			jdbc.openSession();
-//
-//			//String sqlP = "SELECT AD_ID_EXTERNO_FORN, CODPARC FROM TGFPAR WHERE AD_ID_EXTERNO_FORN IS NOT NULL AND CODEMP = 3 and rownum < 4";
-//			String sqlP = "SELECT NUFIN, AD_IDEXTERNO, AD_PROCESSADO FROM TGFFIN WHERE CODPARC IN (SELECT CODPARC FROM AD_IDFORNACAD WHERE CODEMP = "+codemp+") AND AD_IDEXTERNO IS NOT NULL AND DHBAIXA IS NULL AND NVL(AD_PROCESSADO, 'N') = 'N' AND CODEMP = "+codemp+" AND ROWNUM <= 400";
-//
-//			pstmt = jdbc.getPreparedStatement(sqlP);
-//
-//			rs = pstmt.executeQuery();
-//			
-//			while (rs.next()) {
-//				count++;
-				//String fornecedor = rs.getString("AD_ID_EXTERNO_FORN");
-				
 
 				System.out.println("Teste: " + response[1]);
 				
 				String response2 = response[1];
 				
-				if(!response2.equals("[]")){
+				if(response[0].equalsIgnoreCase("200")){
 					JsonParser parser = new JsonParser();
 					JsonArray jsonArray = parser.parse(response[1])
 							.getAsJsonArray();
@@ -360,17 +620,29 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 						BigDecimal vlrBaixa = new BigDecimal(jsonObject.get(
 								"baixa_valor").getAsString());
 
-						BigDecimal vlrJuros = new BigDecimal(jsonObject.get(
-								"baixa_juros").getAsString());
+						BigDecimal vlrJuros = Optional.ofNullable(jsonObject.get("baixa_juros"))
+							    .filter(element -> !element.isJsonNull())
+							    .map(JsonElement::getAsString)
+							    .map(BigDecimal::new)
+							    .orElse(BigDecimal.ZERO);
 
-						BigDecimal vlrMulta = new BigDecimal(jsonObject.get(
-								"baixa_multa").getAsString());
-
-						BigDecimal vlrDesconto = new BigDecimal(jsonObject.get(
-								"baixa_desconto").getAsString());
-						
-						BigDecimal vlrOutrosAcrescimos = new BigDecimal(jsonObject.get(
-								"baixa_outros_acrescimos").getAsString());
+						BigDecimal vlrMulta = Optional.ofNullable(jsonObject.get("baixa_multa"))
+						    .filter(element -> !element.isJsonNull())
+						    .map(JsonElement::getAsString)
+						    .map(BigDecimal::new)
+						    .orElse(BigDecimal.ZERO);
+	
+						BigDecimal vlrDesconto = Optional.ofNullable(jsonObject.get("baixa_desconto"))
+						    .filter(element -> !element.isJsonNull())
+						    .map(JsonElement::getAsString)
+						    .map(BigDecimal::new)
+						    .orElse(BigDecimal.ZERO);
+	
+						BigDecimal vlrOutrosAcrescimos = Optional.ofNullable(jsonObject.get("baixa_outros_acrescimos"))
+							.filter(element -> !element.isJsonNull())
+							.map(JsonElement::getAsString)
+							.map(BigDecimal::new)
+							.orElse(BigDecimal.ZERO);
 
 						String dataBaixa = jsonObject.get("baixa_data")
 								.getAsString();
@@ -422,11 +694,14 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 
 						String baixaFormaPagamentoId = jsonObject2.get(
 								"forma_pagamento_id").getAsString();
+						
+						formaDePagamento = jsonObject2.get(
+								"forma_pagamento_id").getAsString().trim();
 
-						codTipTit = mapaInfTipoTitulo.get(codemp
+						codTipTit = Optional.ofNullable(mapaInfTipoTitulo.get(codemp
 								+ "###"
 								+ jsonObject2.get(
-										"forma_pagamento_id").getAsString());
+										"forma_pagamento_id").getAsString())).orElse(BigDecimal.ZERO);
 						
 						BigDecimal taxaCartao = Optional.ofNullable(mapaInfTipoTituloTaxa.get(codemp
 								+ "###"
@@ -435,7 +710,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 						
 
 						if(taxaCartao.compareTo(BigDecimal.ZERO) != 0){
-							vlrBaixa.subtract( vlrBaixa.multiply(taxaCartao).divide(BigDecimal.valueOf(100)) );
+							vlrBaixa = vlrBaixa.subtract( vlrBaixa.multiply(taxaCartao).divide(BigDecimal.valueOf(100)) );
 						}
 						
 						System.out.println("estorno: " + dataEstorno);
@@ -450,102 +725,137 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 							
 							System.out.println("dtMinMovConta: " + dtMinMovConta);
 							
-							if (data.after(dtMinMovConta)) {
+
+							if (dataEstorno == null) {
 								
-								if (dataEstorno == null) {
-									if ("N".equalsIgnoreCase(mapaInfFinanceiroBaixado
-											.get(nufin))) {
+								if(dtMinMovConta != null){
+									
+									if (data.equals(dtMinMovConta) || data.after(dtMinMovConta)) {
 										
-										System.out.println("Chegou no update");
-										
-										if (vlrBaixa
-												.compareTo(mapaInfFinanceiroValor
-														.get(nufin)) == 0) {
-											System.out
-													.println("Entrou no if do valor");
-											updateFin(codTipTit, nufin, codBanco,
-													codConta, vlrDesconto,
-													vlrJuros, vlrMulta, vlrOutrosAcrescimos);
-										} else {
-											System.out
-													.println("Entrou no else do valor");
-											updateFinComVlrBaixa(codTipTit, nufin,
-													codBanco, codConta, vlrBaixa,vlrDesconto,
-													vlrJuros, vlrMulta, vlrOutrosAcrescimos);
+										if(codTipTit != null && codTipTit.compareTo(BigDecimal.ZERO) != 0){
+											
+												if ("N".equalsIgnoreCase(mapaInfFinanceiroBaixado
+														.get(nufin))) {
+													
+													System.out.println("Chegou no update");
+													
+													if (vlrBaixa
+															.compareTo(mapaInfFinanceiroValor
+																	.get(nufin)) == 0) {
+														System.out
+																.println("Entrou no if do valor");
+														updateFin(codTipTit, nufin, codBanco,
+																codConta, vlrDesconto,
+																vlrJuros, vlrMulta, vlrOutrosAcrescimos,
+																codemp);
+													} else {
+														System.out
+																.println("Entrou no else do valor");
+														updateFinComVlrBaixa(codTipTit, nufin,
+																codBanco, codConta, vlrBaixa,vlrDesconto,
+																vlrJuros, vlrMulta, vlrOutrosAcrescimos,
+																codemp);
+													}
+													System.out.println("vlrDesconto: "
+															+ vlrDesconto);
+													System.out.println("vlrJuros: " + vlrJuros);
+													System.out.println("vlrMulta: " + vlrMulta);
+
+													nubco = insertMovBancaria(codConta,
+															vlrBaixa, nufin, dataBaixaFormatada, codemp);
+
+													movBanc = true;
+
+													System.out
+															.println("Passou da mov bancaria: "
+																	+ nubco);
+
+													System.out.println("vlrBaixa: " + vlrBaixa);
+
+													updateBaixa(nufin, nubco, vlrBaixa,
+															dataBaixaFormatada, codemp);
+
+													/*insertLogIntegracao(
+															"Baixa Efetuada Com Sucesso Para o Financeiro: "
+																	+ nufin, "Sucesso");*/
+												} else {
+													System.out.println("Financeiro " + nufin
+															+ " jï¿½ baixado");
+												}
+											
+										}else{
+
+											selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" de Tipo de Titulo "
+													+ "Configurado Para o Metodo de Pagamento: "+formaDePagamento+"' , SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+											
 										}
-										System.out.println("vlrDesconto: "
-												+ vlrDesconto);
-										System.out.println("vlrJuros: " + vlrJuros);
-										System.out.println("vlrMulta: " + vlrMulta);
-
-										nubco = insertMovBancaria(codConta,
-												vlrBaixa, nufin, dataBaixaFormatada);
-
-										movBanc = true;
-
-										System.out
-												.println("Passou da mov bancaria: "
-														+ nubco);
-
-										System.out.println("vlrBaixa: " + vlrBaixa);
-
-										updateBaixa(nufin, nubco, vlrBaixa,
-												dataBaixaFormatada);
-
-										/*insertLogIntegracao(
-												"Baixa Efetuada Com Sucesso Para o Financeiro: "
-														+ nufin, "Sucesso");*/
+										
+										
 									} else {
-										System.out.println("Financeiro " + nufin
-												+ " já baixado");
+										
+										selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Baixa Para o Titulo "
+														+ nufin
+														+ " Nï¿½o Efetuada Pois a Data Minima de Movimentaï¿½ï¿½o Bancaria "
+														+ "Para a Conta " + codConta
+														+ " ï¿½ Superior a Data de Baixa: "
+														+ dataBaixaFormatada+"' , SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+										
+										
+										/*util.inserirLog("Baixa Para o Titulo "
+														+ nufin
+														+ " Nï¿½o Efetuada Pois a Data Minima de Movimentaï¿½ï¿½o Bancaria "
+														+ "Para a Conta " + codConta
+														+ " ï¿½ Superior a Data de Baixa: "
+														+ dataBaixaFormatada, "Aviso", "", codemp);*/
 									}
-								} else if ("S".equalsIgnoreCase(mapaInfFinanceiroBaixado
-										.get(nufin))) {
-									nubco = mapaInfFinanceiroBanco.get(nufin);
-									updateFinExtorno(nufin);
-									deleteTgfMbc(nubco);
-									deleteTgfFin(nufin);
-									/*insertLogIntegracao(
-											"Estorno Efetuado com sucesso",
-											"Sucesso");*/
+									
+								}else{
+
+									selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Data Minima de Injeï¿½ï¿½o de Saldo Nï¿½o Localizada Para a Conta: "+codConta+"' , SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+									
 								}
-							} else {
+								
+							} else if ("S".equalsIgnoreCase(mapaInfFinanceiroBaixado
+									.get(nufin))) {
+								nubco = mapaInfFinanceiroBanco.get(nufin);
+								updateFinExtorno(nufin, codemp);
+								deleteTgfMbc(nubco, codemp);
+								deleteTgfFin(nufin, codemp);
 								/*insertLogIntegracao(
-										"Baixa Para o Titulo "
-												+ nufin
-												+ " Não Efetuada Pois a Data Minima de Movimentação Bancaria "
-												+ "Para a Conta " + codConta
-												+ " é Superior a Data de Baixa: "
-												+ dataBaixaFormatada, "Aviso");*/
+										"Estorno Efetuado com sucesso",
+										"Sucesso");*/
 							}
+							
 						} else {
 							System.out
-									.println("Não foi possivel encontrar financeiro com id externo "
+									.println("Nï¿½o foi possivel encontrar financeiro com id externo "
 											+ tituloId);
 						}
 					}
+				}else{
+					
+					selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Resposta da API invalida ou vazia: codigo: " + response[0] 
+							+ "\nResposta: " + response[1]+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+					
+					/*util.inserirLog("Resposta da API invalida ou vazia: codigo: " + response[0] 
+							+ "\nResposta: " + response[1], "Aviso", "", codemp);*/
 				}
 				
-//				updateFlagTituloProcessado(idExternoTitulo);
-//				
-//			}
-//			System.out.println("Chegou ao final da baixa");
-//			
-//			if(count == 0){
-//				updateResetarTitulo(codemp);
-//			}
 			
 		} catch (Exception e) {
 			e.printStackTrace();
 			if (movBanc) {
-				updateFinExtorno(nufin);
-				deleteTgfMbc(nubco);
+				updateFinExtorno(nufin, codemp);
+				deleteTgfMbc(nubco, codemp);
 				System.out.println("Apagou mov bank");
 			}
 			try {
-				insertLogIntegracao(
+				
+				selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Mensagem de erro nas Baixas: " + e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+				
+				/*util.inserirLog(
 						"Mensagem de erro nas Baixas: " + e.getMessage(),
-						"Erro");
+						"Erro", "", codemp);*/
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -559,7 +869,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		StringBuilder responseContent = new StringBuilder();
 		// String key = preferenciaSenha();
 
-		// Preparando a requisição
+		// Preparando a requisiï¿½ï¿½o
 		URL obj = new URL(ur);
 		HttpURLConnection https = (HttpURLConnection) obj.openConnection();
 
@@ -894,7 +1204,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 	public void updateFin(BigDecimal codtiptit, BigDecimal nufin,
 			BigDecimal codBanco, BigDecimal codConta, BigDecimal vlrDesconto,
 			BigDecimal vlrJuros, BigDecimal vlrMulta,
-			BigDecimal vlrOutrosAcrescimos) throws Exception {
+			BigDecimal vlrOutrosAcrescimos, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -925,7 +1235,8 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Financeiro Para baixa: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -934,7 +1245,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		}
 	}
 
-	public void deleteTgfMbc(BigDecimal nubco) throws Exception {
+	public void deleteTgfMbc(BigDecimal nubco, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -950,7 +1261,9 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Deletar Mov. Bancaria: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -959,7 +1272,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		}
 	}
 	
-	public void deleteTgfFin(BigDecimal nufin) throws Exception {
+	public void deleteTgfFin(BigDecimal nufin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -975,7 +1288,9 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Excluir Titulo: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -984,7 +1299,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		}
 	}
 
-	public void updateFinExtorno(BigDecimal nufin) throws Exception {
+	public void updateFinExtorno(BigDecimal nufin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1003,7 +1318,9 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Extornar Titulo: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1015,7 +1332,7 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 	public void updateFinComVlrBaixa(BigDecimal codtiptit, BigDecimal nufin,
 			BigDecimal codBanco, BigDecimal codConta, BigDecimal vlrBaixa,
 			BigDecimal vlrDesconto, BigDecimal vlrJuros, BigDecimal vlrMulta,
-			BigDecimal outrosAcrescimos)
+			BigDecimal outrosAcrescimos, BigDecimal codemp)
 			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1037,7 +1354,9 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Atualizar Titulo Para Baixa: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1047,7 +1366,8 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 	}
 
 	public void updateBaixa(BigDecimal nufin, BigDecimal nubco,
-			BigDecimal vlrDesdob, String dataBaixaFormatada) throws Exception {
+			BigDecimal vlrDesdob, String dataBaixaFormatada,
+			BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1076,7 +1396,9 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Baixar Titulo: "+e.getMessage()+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1112,71 +1434,84 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 	}
 
 	public BigDecimal insertMovBancaria(BigDecimal contaBancaria,
-			BigDecimal vlrDesdob, BigDecimal nufin, String dataBaixaFormatada)
+			BigDecimal vlrDesdob, BigDecimal nufin, String dataBaixaFormatada, 
+			BigDecimal codemp)
 			throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
-		BigDecimal nubco = getMaxNumMbc();
+		
+		EnviromentUtils util = new EnviromentUtils();
+		
+		BigDecimal nubco = util.getMaxNumMbc();
 
 		jdbc.openSession();
+		
+		try{
+			
+			String sqlUpdate = "INSERT INTO TGFMBC (NUBCO, CODLANC, DTLANC, CODTIPOPER, DHTIPOPER, DTCONTAB, HISTORICO, CODCTABCOINT, NUMDOC, VLRLANC, TALAO, PREDATA, CONCILIADO, DHCONCILIACAO, ORIGMOV, NUMTRANSF, RECDESP, DTALTER, DTINCLUSAO, CODUSU, VLRMOEDA, SALDO, CODCTABCOCONTRA, NUBCOCP, CODPDV )  VALUES ("
+					+
+					nubco
+					+ ", "
+					+ "1, "
+					+ "'"
+					+ dataBaixaFormatada
+					+ "'"
+					+ ", "
+					+ "1500, "
+					+ "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1500), "
+					+ "NULL, "
+					+ "(SELECT HISTORICO FROM TGFFIN WHERE NUFIN = "
+					+ nufin
+					+ "), "
+					+
 
-		String sqlUpdate = "INSERT INTO TGFMBC (NUBCO, CODLANC, DTLANC, CODTIPOPER, DHTIPOPER, DTCONTAB, HISTORICO, CODCTABCOINT, NUMDOC, VLRLANC, TALAO, PREDATA, CONCILIADO, DHCONCILIACAO, ORIGMOV, NUMTRANSF, RECDESP, DTALTER, DTINCLUSAO, CODUSU, VLRMOEDA, SALDO, CODCTABCOCONTRA, NUBCOCP, CODPDV )  VALUES ("
-				+
+					contaBancaria
+					+ ", "
+					+ "0, "
+					+
 
-				nubco
-				+ ", "
-				+ "1, "
-				+ "'"
-				+ dataBaixaFormatada
-				+ "'"
-				+ ", "
-				+ "1500, "
-				+ "(SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 1500), "
-				+ "NULL, "
-				+ "(SELECT HISTORICO FROM TGFFIN WHERE NUFIN = "
-				+ nufin
-				+ "), "
-				+
+					vlrDesdob
+					+ ", "
+					+ "NULL, "
+					+ "'"
+					+ dataBaixaFormatada
+					+ "', "
+					+ "'N', "
+					+ "NULL, "
+					+ "'F', "
+					+ "NULL, "
+					+ "1, "
+					+ "SYSDATE, "
+					+ "SYSDATE, "
+					+ "0, "
+					+ "0, "
+					+ vlrDesdob
+					+ ", "
+					+ "NULL,  "
+					+ "NULL, " + "NULL) ";
 
-				contaBancaria
-				+ ", "
-				+ "0, "
-				+
+			pstmt = jdbc.getPreparedStatement(sqlUpdate);
+			pstmt.executeUpdate();
+			
+		}catch(Exception e){
+			e.printStackTrace();
 
-				vlrDesdob
-				+ ", "
-				+ "NULL, "
-				+ "'"
-				+ dataBaixaFormatada
-				+ "', "
-				+ "'N', "
-				+ "NULL, "
-				+ "'F', "
-				+ "NULL, "
-				+ "1, "
-				+ "SYSDATE, "
-				+ "SYSDATE, "
-				+ "0, "
-				+ "0, "
-				+ vlrDesdob
-				+ ", "
-				+ "NULL,  "
-				+ "NULL, " + "NULL) ";
-
-		pstmt = jdbc.getPreparedStatement(sqlUpdate);
-		pstmt.executeUpdate();
-		try {
-			if (pstmt != null) {
-				pstmt.close();
+			selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Erro Ao Inserir Mov. Bancaria: "+e.getMessage().replace("'", "\"")+"' , SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
+		}finally{
+			try {
+				if (pstmt != null) {
+					pstmt.close();
+				}
+				if (jdbc != null) {
+					jdbc.closeSession();
+				}
+			} catch (Exception se) {
+				se.printStackTrace();
 			}
-			if (jdbc != null) {
-				jdbc.closeSession();
-			}
-		} catch (Exception se) {
-			se.printStackTrace();
 		}
+		
 		return nubco;
 	}
 
@@ -1235,10 +1570,10 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 			}
 		} catch (Exception se) {
 			se.printStackTrace();
+			throw se;
 		}
 	}
 	
-
 	public void updateFlagTituloProcessado(String idTitulo) throws Exception {
 		
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1266,7 +1601,6 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		}
 		
 	}
-	
 	
 	public void updateResetarTitulo(BigDecimal codEmp) throws Exception {
 		
@@ -1296,7 +1630,6 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		
 	}
 	
-
 	public List<Object[]> retornarInformacoesBancoConta() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
@@ -1451,6 +1784,30 @@ public class JobGetBaixaFornecedores implements ScheduledAction {
 		}
 
 		return listRet;
+	}
+	
+
+	public void insertLogList(String listInsert, BigDecimal codemp) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try {
+			jdbc.openSession();
+			
+			String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, "
+							 + "	STATUS, CODEMP, MATRICULA_IDFORN) " + listInsert;
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpdate);
+			//pstmt.setString(1, listInsert);
+			pstmt.executeUpdate();
+		} catch (Exception se) {
+			se.printStackTrace();
+		} finally {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
 	}
 	
 }

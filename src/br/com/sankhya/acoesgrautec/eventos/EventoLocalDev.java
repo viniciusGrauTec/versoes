@@ -10,6 +10,7 @@ import br.com.sankhya.jape.vo.DynamicVO;
 import br.com.sankhya.jape.wrapper.JapeFactory;
 import br.com.sankhya.jape.wrapper.JapeWrapper;
 import br.com.sankhya.jape.wrapper.fluid.FluidUpdateVO;
+import br.com.sankhya.modelcore.comercial.AtributosRegras;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -37,7 +38,7 @@ public class EventoLocalDev implements EventoProgramavelJava {
     public void afterUpdate(PersistenceEvent event) throws Exception {
         DynamicVO dadosVO = (DynamicVO) event.getVo();
         DynamicVO dadosOldVO = (DynamicVO) event.getOldVO();
-
+        
         JapeWrapper cabDAO = JapeFactory.dao("CabecalhoNota");
 
         JapeWrapper iteDAO = JapeFactory.dao("ItemNota");

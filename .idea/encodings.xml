@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/src/br/com/sankhya/acoesgrautec/extensions/AcaoGetBaixaFornecedoresCarga.java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/br/com/sankhya/acoesgrautec/extensions/AcaoGetBaixaMapCarga.java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/br/com/sankhya/acoesgrautec/extensions/AcaoGetCredorAlunoTurmaCursoCarga.java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/br/com/sankhya/acoesgrautec/extensions/AcaoIntegracaoCredAlunoCursoTurma.java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/br/com/sankhya/acoesgrautec/extensions/Teste.java" charset="UTF-8" />
+  </component>
+</project>

@@ -1,4 +1,4 @@
-package br.com.sankhya.acoesgrautec.jobs;
+package br.com.sankhya.acoesgrautec.extensions;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -19,6 +20,10 @@ import java.util.Optional;
 import org.cuckoo.core.ScheduledAction;
 import org.cuckoo.core.ScheduledActionContext;
 
+import br.com.sankhya.acoesgrautec.util.EnviromentUtils;
+import br.com.sankhya.extensions.actionbutton.AcaoRotinaJava;
+import br.com.sankhya.extensions.actionbutton.ContextoAcao;
+import br.com.sankhya.extensions.actionbutton.Registro;
 import br.com.sankhya.jape.EntityFacade;
 import br.com.sankhya.jape.dao.JdbcWrapper;
 import br.com.sankhya.modelcore.util.EntityFacadeFactory;
@@ -28,27 +33,39 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-public class JobGetTitulos implements ScheduledAction {
-
+public class AcaoGetTitulosCarga implements AcaoRotinaJava, ScheduledAction {
+	
+	private List<String> selectsParaInsertLog = new ArrayList<String>();
+	private EnviromentUtils util = new EnviromentUtils();
+	
 	@Override
-	public void onTime(ScheduledActionContext arg0) {
-
-		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
-		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
-		PreparedStatement pstmt = null;
-		ResultSet rs = null;
-
-		BigDecimal codEmp = BigDecimal.ZERO;
-		BigDecimal idCarga = BigDecimal.ZERO;
-
-		String url = "";
-		String token = "";
-		String matricula = "";
-
-		int count = 0;
-
-		System.out.println("Iniciou o financeiro dos alunos Empresas");
-
+	public void doAction(ContextoAcao contexto) throws Exception {
+		
+		Registro[] linhas = contexto.getLinhas();
+		Registro registro = linhas[0];
+		
+		String url = (String) registro.getCampo("URL");
+		String token = (String) registro.getCampo("TOKEN");
+		BigDecimal codEmp = (BigDecimal) registro.getCampo("CODEMP");
+		String profissionalizante = Optional.ofNullable(registro.getCampo("PROFISSIONAL")).orElse("N").toString(); 
+		String tecnico = (String) Optional.ofNullable(registro.getCampo("TECNICO")).orElse("N");
+		
+		String tipoEmpresa = "";
+		
+		if(profissionalizante.equalsIgnoreCase("S")){
+			tipoEmpresa = "P";
+		}else if(tecnico.equalsIgnoreCase("S")){
+			tipoEmpresa = "T";
+		}else{
+			tipoEmpresa = "N";
+		}
+		
+		
+		String dataInicio = contexto.getParam("DTINICIO").toString().substring(0, 10);
+		String dataFim = contexto.getParam("DTFIM").toString().substring(0, 10);
+		String tituloAberto = (String) contexto.getParam("TITABERTO");
+		String matricula = (String) contexto.getParam("MATRICULA");
+		
 		try {
 
 			// Alunos
@@ -57,9 +74,10 @@ public class JobGetTitulos implements ScheduledAction {
 			for (Object[] obj : listInfAlunos) {
 				BigDecimal codParc = (BigDecimal) obj[0];
 				String idExternoObj = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[3];
 
-				if (mapaInfAlunos.get(idExternoObj) == null) {
-					mapaInfAlunos.put(idExternoObj, codParc);
+				if (mapaInfAlunos.get(idExternoObj + "###" + codemp) == null) {
+					mapaInfAlunos.put(idExternoObj + "###" + codemp, codParc);
 				}
 			}
 
@@ -76,7 +94,7 @@ public class JobGetTitulos implements ScheduledAction {
 							nuFin);
 				}
 			}
-			
+
 			// Nro Banco
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco = new HashMap<BigDecimal, BigDecimal>();
 			for (Object[] obj : listInfFinanceiro) {
@@ -87,7 +105,7 @@ public class JobGetTitulos implements ScheduledAction {
 				}
 
 			}
-			
+
 			// NuFin Baixados
 			Map<BigDecimal, String> mapaInfFinanceiroBaixado = new HashMap<BigDecimal, String>();
 			for (Object[] obj : listInfFinanceiro) {
@@ -117,9 +135,23 @@ public class JobGetTitulos implements ScheduledAction {
 			for (Object[] obj : listInfCenCus) {
 				BigDecimal codCenCus = (BigDecimal) obj[0];
 				String idExterno = (String) obj[1];
+				String flag = (String) obj[2];
 
-				if (mapaInfCenCus.get(idExterno) == null) {
-					mapaInfCenCus.put(idExterno, codCenCus);
+				if (mapaInfCenCus.get(idExterno + "###" + flag) == null) {
+					mapaInfCenCus.put(idExterno + "###" + flag, codCenCus);
+				}
+			}
+			
+			//CenCus por empresa
+			List<Object[]> listInfCenCusEmpresa = retornarInformacoesCenCusEmpresa();
+			Map<String, BigDecimal> mapaInfCenCusEmp = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfCenCusEmpresa) {
+				BigDecimal codCenCus = (BigDecimal) obj[0];
+				String idExterno = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[2];
+				
+				if (mapaInfCenCusEmp.get(idExterno + "###" + codemp) == null) {
+					mapaInfCenCusEmp.put(idExterno + "###" + codemp, codCenCus);
 				}
 			}
 
@@ -140,9 +172,250 @@ public class JobGetTitulos implements ScheduledAction {
 			for (Object[] obj : listInfNatureza) {
 				BigDecimal natureza = (BigDecimal) obj[0];
 				String idExternoObj = (String) obj[1];
+				String flag = (String) obj[2];
 
-				if (mapaInfNatureza.get(idExternoObj) == null) {
-					mapaInfNatureza.put(idExternoObj, natureza);
+				if (mapaInfNatureza.get(idExternoObj + "###" + flag) == null) {
+					mapaInfNatureza.put(idExternoObj + "###" + flag, natureza);
+				}
+			}
+			
+			//Natureza por empresa
+			List<Object[]> listInfNaturezaEmpresa = retornarInformacoesNaturezaEmpresa();
+			Map<String, BigDecimal> mapaInfNaturezaEmp = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfNaturezaEmpresa) {
+				BigDecimal natureza = (BigDecimal) obj[0];
+				String idExternoObj = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[2];
+				
+				if (mapaInfNaturezaEmp.get(idExternoObj +"###"+ codemp) == null) {
+					mapaInfNaturezaEmp.put(idExternoObj +"###"+ codemp, natureza);
+				}
+			}
+
+			// RecDesp
+			List<Object[]> listInfRecDesp = retornarInformacoesRecDesp();
+			Map<String, String> mapaInfRecDesp = new HashMap<String, String>();
+			for (Object[] obj : listInfRecDesp) {
+				String recDesp = (String) obj[0];
+				String idExternoObj = (String) obj[1];
+
+				if (mapaInfRecDesp.get(idExternoObj) == null) {
+					mapaInfRecDesp.put(idExternoObj, recDesp);
+				}
+			}
+
+			// Banco
+			List<Object[]> listInfBancoConta = retornarInformacoesBancoConta();
+			Map<String, BigDecimal> mapaInfBanco = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfBancoConta) {
+				Long codEmpObj = (Long) obj[1];
+				BigDecimal codBcoObj = (BigDecimal) obj[3];
+
+				if (mapaInfBanco.get(codEmpObj.toString()) == null) {
+					mapaInfBanco.put(codEmpObj.toString(), codBcoObj);
+				}
+			}
+
+			// Conta
+			Map<String, BigDecimal> mapaInfConta = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfBancoConta) {
+				BigDecimal codCtabCointObj = (BigDecimal) obj[0];
+				Long codEmpObj = (Long) obj[1];
+
+				if (mapaInfConta.get(codEmpObj.toString()) == null) {
+					mapaInfConta.put(codEmpObj.toString(), codCtabCointObj);
+				}
+			}
+			
+			iterarEndpoint(tituloAberto.trim(),tipoEmpresa, mapaInfNaturezaEmp, mapaInfCenCusEmp, 
+					mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta,
+					mapaInfBanco, mapaInfNatureza, mapaInfCenCus,
+					mapaInfCenCusAluno, mapaInfAlunos, url, token, codEmp,
+					dataInicio, dataFim, matricula);
+			
+			contexto.setMensagemRetorno("Periodo Processado!");
+			
+		}catch(Exception e){
+			e.printStackTrace();
+			contexto.mostraErro(e.getMessage());
+		}finally{
+
+			if(selectsParaInsertLog.size() > 0){
+				
+				StringBuilder msgError = new StringBuilder();
+				
+				System.out.println("Entrou na lista do finally: " + selectsParaInsertLog.size());
+				
+				//int idInicial = util.getMaxNumLog();
+				
+				int qtdInsert = selectsParaInsertLog.size();
+				
+				int i = 1;
+				for (String sqlInsert : selectsParaInsertLog) {
+					String sql = sqlInsert;
+					int nuFin = util.getMaxNumLog();
+					sql = sql.replace("<#NUMUNICO#>", String.valueOf(nuFin));
+					msgError.append(sql);
+
+					if (i < qtdInsert) {
+						msgError.append(" \nUNION ALL ");
+					}
+					i++;
+				}
+				
+				System.out.println("Consulta de log: \n" + msgError);
+				insertLogList(msgError.toString(), codEmp);
+				
+			}
+		
+		}
+		
+	}
+	
+	@Override
+	public void onTime(ScheduledActionContext arg0) {
+
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+
+		BigDecimal codEmp = BigDecimal.ZERO;
+		BigDecimal idCarga = BigDecimal.ZERO;
+
+		String url = "";
+		String token = "";
+		String matricula = "";
+		String tipoEmpresa = "";
+
+		int count = 0;
+
+		System.out.println("Iniciou o financeiro dos alunos Empresas");
+
+		try {
+			
+			// Alunos
+			List<Object[]> listInfAlunos = retornarInformacoesAlunos();
+			Map<String, BigDecimal> mapaInfAlunos = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfAlunos) {
+				BigDecimal codParc = (BigDecimal) obj[0];
+				String idExternoObj = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[3];
+
+				if (mapaInfAlunos.get(idExternoObj + "###" + codemp) == null) {
+					mapaInfAlunos.put(idExternoObj + "###" + codemp, codParc);
+				}
+			}
+
+			// Financeiro
+			List<Object[]> listInfFinanceiro = retornarInformacoesFinanceiro();
+			Map<String, BigDecimal> mapaInfFinanceiro = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal codEmpObj = (BigDecimal) obj[1];
+				String idExternoObj = (String) obj[2];
+
+				if (mapaInfFinanceiro.get(codEmpObj + "###" + idExternoObj) == null) {
+					mapaInfFinanceiro.put(codEmpObj + "###" + idExternoObj,
+							nuFin);
+				}
+			}
+
+			// Nro Banco
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco = new HashMap<BigDecimal, BigDecimal>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				BigDecimal nuBco = (BigDecimal) obj[5];
+				if (mapaInfFinanceiroBanco.get(nuFin) == null) {
+					mapaInfFinanceiroBanco.put(nuFin, nuBco);
+				}
+
+			}
+
+			// NuFin Baixados
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado = new HashMap<BigDecimal, String>();
+			for (Object[] obj : listInfFinanceiro) {
+				BigDecimal nuFin = (BigDecimal) obj[0];
+				String baixado = (String) obj[3];
+				if (mapaInfFinanceiroBaixado.get(nuFin) == null) {
+					mapaInfFinanceiroBaixado.put(nuFin, baixado);
+				}
+
+			}
+
+			// Parceiros
+			List<Object[]> listInfParceiro = retornarInformacoesParceiros();
+			Map<String, BigDecimal> mapaInfParceiros = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfParceiro) {
+				BigDecimal codParc = (BigDecimal) obj[0];
+				String cpf_cnpj = (String) obj[1];
+
+				if (mapaInfParceiros.get(cpf_cnpj) == null) {
+					mapaInfParceiros.put(cpf_cnpj, codParc);
+				}
+			}
+
+			// CenCus
+			List<Object[]> listInfCenCus = retornarInformacoesCenCus();
+			Map<String, BigDecimal> mapaInfCenCus = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfCenCus) {
+				BigDecimal codCenCus = (BigDecimal) obj[0];
+				String idExterno = (String) obj[1];
+				String flag = (String) obj[2];
+
+				if (mapaInfCenCus.get(idExterno + "###" + flag) == null) {
+					mapaInfCenCus.put(idExterno + "###" + flag, codCenCus);
+				}
+			}
+
+			// CenCus por empresa
+			List<Object[]> listInfCenCusEmpresa = retornarInformacoesCenCusEmpresa();
+			Map<String, BigDecimal> mapaInfCenCusEmp = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfCenCusEmpresa) {
+				BigDecimal codCenCus = (BigDecimal) obj[0];
+				String idExterno = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[2];
+
+				if (mapaInfCenCusEmp.get(idExterno + "###" + codemp) == null) {
+					mapaInfCenCusEmp.put(idExterno + "###" + codemp, codCenCus);
+				}
+			}
+
+			// CenCus Pelo Aluno
+			Map<String, BigDecimal> mapaInfCenCusAluno = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfAlunos) {
+				String idExternoObj = (String) obj[1];
+				BigDecimal codCenCus = (BigDecimal) obj[2];
+
+				if (mapaInfCenCusAluno.get(idExternoObj) == null) {
+					mapaInfCenCusAluno.put(idExternoObj, codCenCus);
+				}
+			}
+
+			// Natureza
+			List<Object[]> listInfNatureza = retornarInformacoesNatureza();
+			Map<String, BigDecimal> mapaInfNatureza = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfNatureza) {
+				BigDecimal natureza = (BigDecimal) obj[0];
+				String idExternoObj = (String) obj[1];
+				String flag = (String) obj[2];
+
+				if (mapaInfNatureza.get(idExternoObj + "###" + flag) == null) {
+					mapaInfNatureza.put(idExternoObj + "###" + flag, natureza);
+				}
+			}
+
+			// Natureza por empresa
+			List<Object[]> listInfNaturezaEmpresa = retornarInformacoesNaturezaEmpresa();
+			Map<String, BigDecimal> mapaInfNaturezaEmp = new HashMap<String, BigDecimal>();
+			for (Object[] obj : listInfNaturezaEmpresa) {
+				BigDecimal natureza = (BigDecimal) obj[0];
+				String idExternoObj = (String) obj[1];
+				BigDecimal codemp = (BigDecimal) obj[2];
+
+				if (mapaInfNaturezaEmp.get(idExternoObj + "###" + codemp) == null) {
+					mapaInfNaturezaEmp.put(idExternoObj + "###" + codemp,
+							natureza);
 				}
 			}
 
@@ -182,14 +455,11 @@ public class JobGetTitulos implements ScheduledAction {
 			}
 
 			jdbc.openSession();
-
-			String query = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO";
-			//String query3 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 3";
-			//String query4 = "SELECT CODEMP, URL, TOKEN FROM AD_LINKSINTEGRACAO WHERE CODEMP = 4";
-			// String query3 =
-			// "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 3 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
-			//String query4 = "SELECT LINK.CODEMP, URL, TOKEN, IDCARGA, MATRICULA FROM AD_LINKSINTEGRACAO LINK INNER JOIN AD_CARGAALUNOS CARGA ON CARGA.CODEMP = LINK.CODEMP WHERE LINK.CODEMP = 4 AND NVL(CARGA.INTEGRADO_FIN, 'N') = 'N'";
-
+			
+			String query = "SELECT CODEMP, URL, TOKEN, "
+					+ "CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS TIPEMP "
+					+ "FROM AD_LINKSINTEGRACAO";
+			
 			pstmt = jdbc.getPreparedStatement(query);
 
 			rs = pstmt.executeQuery();
@@ -197,23 +467,17 @@ public class JobGetTitulos implements ScheduledAction {
 			while (rs.next()) {
 				count++;
 				codEmp = rs.getBigDecimal("CODEMP");
-				// idCarga = rs.getBigDecimal("IDCARGA");
-
+				
 				url = rs.getString("URL");
 				token = rs.getString("TOKEN");
-				// matricula = rs.getString("MATRICULA");
+				tipoEmpresa = rs.getString("TIPEMP");
 
-				iterarEndpoint(mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta,
+				iterarEndpoint(tipoEmpresa.trim(), mapaInfNaturezaEmp, mapaInfCenCusEmp, 
+						mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp, mapaInfConta,
 						mapaInfBanco, mapaInfNatureza, mapaInfCenCus,
-						mapaInfCenCusAluno, mapaInfAlunos, url, token, codEmp,
-						matricula);
-				// updateCarga(idCarga);
+						mapaInfCenCusAluno, mapaInfAlunos, url, token, codEmp);
 
 			}
-
-			/*
-			 * if(count == 0){ resetCarga(codEmp); }
-			 */
 
 			System.out
 					.println("Finalizou o financeiro dos alunos Empresas");
@@ -221,9 +485,7 @@ public class JobGetTitulos implements ScheduledAction {
 		} catch (Exception e) {
 			e.printStackTrace();
 			try {
-				insertLogIntegracao(
-						"Erro ao integrar financeiro, Mensagem de erro: "
-								+ e.getMessage(), "Erro");
+				
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -243,10 +505,59 @@ public class JobGetTitulos implements ScheduledAction {
 				}
 			}
 			jdbc.closeSession();
+			
+
+			if(selectsParaInsertLog.size() > 0){
+				
+				StringBuilder msgError = new StringBuilder();
+				
+				System.out.println("Entrou na lista do finally: " + selectsParaInsertLog.size());
+				
+				//int idInicial = util.getMaxNumLog();
+				
+				int qtdInsert = selectsParaInsertLog.size();
+				
+				int i = 1;
+				for (String sqlInsert : selectsParaInsertLog) {
+					String sql = sqlInsert;
+					int nuFin = 0;
+					
+					try {
+						nuFin = util.getMaxNumLog();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					
+					sql = sql.replace("<#NUMUNICO#>", String.valueOf(nuFin));
+					msgError.append(sql);
+
+					if (i < qtdInsert) {
+						msgError.append(" \nUNION ALL ");
+					}
+					i++;
+				}
+				
+				System.out.println("Consulta de log: \n" + msgError);
+				try {
+					insertLogList(msgError.toString(), codEmp);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				msgError = null;
+				this.selectsParaInsertLog = new ArrayList<String>();
+				
+			}
+		
+		
 		}
 	}
 
-	public void iterarEndpoint(Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+	public void iterarEndpoint(String tituloAberto,
+			String tipoEmpresa, 
+			Map<String, BigDecimal> mapaInfNaturezaEmp,
+			Map<String, BigDecimal> mapaInfCenCusEmp, 
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
 			Map<String, BigDecimal> mapaInfFinanceiro,
 			Map<String, String> mapaInfRecDesp,
@@ -256,28 +567,120 @@ public class JobGetTitulos implements ScheduledAction {
 			Map<String, BigDecimal> mapaInfCenCus,
 			Map<String, BigDecimal> mapaInfCenCusAluno,
 			Map<String, BigDecimal> mapaInfAlunos, String url, String token,
-			BigDecimal codEmp, String matricula) throws Exception {
-		// int pagina = 1;
+			BigDecimal codEmp, String dataInicio, String dataFim, String matricula) throws Exception {
 
+		try {
+			
+			// Convertendo as Strings para LocalDate
+	        LocalDate inicio = LocalDate.parse(dataInicio);
+	        LocalDate fim = LocalDate.parse(dataFim);
+
+	        // Loop para percorrer o intervalo de dias
+	        LocalDate atual = inicio;
+	        
+			while (!atual.isAfter(fim)) {
+				
+				String dataAtual = atual.toString();
+				
+				System.out.println("While de iteração");
+				
+				String[] response = null;
+				
+				if(tituloAberto.equalsIgnoreCase("S")){
+					
+					if(matricula != null && !matricula.isEmpty()){
+
+						response = apiGet(url
+								+ "/financeiro"
+								+ "/titulos?"
+								+ "situacao=A"
+								+ "&quantidade=0"
+								+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+								+ dataAtual + " 23:59:59"
+								+ "&matricula=" + matricula
+								, token);
+					}else{
+
+						response = apiGet(url
+								+ "/financeiro"
+								+ "/titulos?"
+								+ "situacao=A"
+								+ "&quantidade=0"
+								+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+								+ dataAtual + " 23:59:59", token);
+					}
+					
+				}else{
+					
+					if(matricula != null && !matricula.isEmpty()){
+
+						response = apiGet(url
+								+ "/financeiro"
+								+ "/titulos?"
+								+ "quantidade=0"
+								+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+								+ dataAtual + " 23:59:59"
+								+ "&matricula=" + matricula
+								, token);
+					}else{
+
+						response = apiGet(url
+								+ "/financeiro"
+								+ "/titulos?"
+								+ "quantidade=0"
+								+ "&dataInicial=" + dataAtual + " 00:00:00&dataFinal="
+								+ dataAtual + " 23:59:59", token);
+					}
+					
+				}
+				
+				int status = Integer.parseInt(response[0]);
+
+				System.out.println("Status teste: " + status);
+
+				String responseString = response[1];
+				System.out.println("response string alunos: " + responseString);
+
+				cadastrarFinanceiro(tipoEmpresa, mapaInfNaturezaEmp, 
+						mapaInfCenCusEmp, mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp,
+						mapaInfConta, mapaInfBanco, mapaInfNatureza, mapaInfCenCus,
+						mapaInfCenCusAluno, mapaInfAlunos, response, url, token,
+						codEmp);
+				
+				// Incrementa para o próximo dia
+				atual = atual.plusDays(1);
+			}
+			
+			
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void iterarEndpoint(String tipoEmpresa, 
+			Map<String, BigDecimal> mapaInfNaturezaEmp,
+			Map<String, BigDecimal> mapaInfCenCusEmp, 
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
+			Map<String, BigDecimal> mapaInfFinanceiro,
+			Map<String, String> mapaInfRecDesp,
+			Map<String, BigDecimal> mapaInfConta,
+			Map<String, BigDecimal> mapaInfBanco,
+			Map<String, BigDecimal> mapaInfNatureza,
+			Map<String, BigDecimal> mapaInfCenCus,
+			Map<String, BigDecimal> mapaInfCenCusAluno,
+			Map<String, BigDecimal> mapaInfAlunos, String url, String token,
+			BigDecimal codEmp) throws Exception {
+		
 		Date dataAtual = new Date();
 
 		SimpleDateFormat formato = new SimpleDateFormat("yyyy-MM-dd");
 
 		String dataFormatada = formato.format(dataAtual);
-		//dataFormatada = "2024-09-13";
-
-		int paginaInicio = 1;
-		int paginaFim = 2;
-		/*
-		 * int paginaAtual = getPagina();
-		 * 
-		 * if(paginaAtual == 0){ paginaInicio = 1; paginaFim = 30; }else{
-		 * paginaInicio = paginaAtual; paginaFim = paginaAtual + 30; }
-		 */
-
+		
 		try {
-			// for (;;)
-			// {
+
 			System.out.println("While de iteração");
 
 			String[] response = apiGet(url
@@ -297,35 +700,27 @@ public class JobGetTitulos implements ScheduledAction {
 			int status = Integer.parseInt(response[0]);
 
 			System.out.println("Status teste: " + status);
-			System.out.println("pagina: " + paginaInicio);
 
 			String responseString = response[1];
 			System.out.println("response string alunos: " + responseString);
 
-			// if ((responseString.equals("[]")) || (paginaInicio == paginaFim))
-			// {
-			// System.out.println("Entrou no if da quebra");
-			// /* if(responseString.equals("[]")){
-			// insertUltPagina(paginaInicio);
-			// }else{
-			// insertUltPagina(paginaFim);
-			// }*/
-			//
-			// break;
-			// }
-			cadastrarFinanceiro(mapaInfFinanceiroBaixado, mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp,
+			cadastrarFinanceiro(tipoEmpresa, mapaInfNaturezaEmp,
+					mapaInfCenCusEmp, mapaInfFinanceiroBaixado,
+					mapaInfFinanceiroBanco, mapaInfFinanceiro, mapaInfRecDesp,
 					mapaInfConta, mapaInfBanco, mapaInfNatureza, mapaInfCenCus,
 					mapaInfCenCusAluno, mapaInfAlunos, response, url, token,
-					codEmp, matricula);
-			// paginaInicio++;
+					codEmp);
+
 		}
-		// }
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	public void cadastrarFinanceiro(Map<BigDecimal, String> mapaInfFinanceiroBaixado,
+	public void cadastrarFinanceiro(String tipoEmpresa,
+			Map<String, BigDecimal> mapaInfNaturezaEmp,
+			Map<String, BigDecimal> mapaInfCenCusEmp,
+			Map<BigDecimal, String> mapaInfFinanceiroBaixado,
 			Map<BigDecimal, BigDecimal> mapaInfFinanceiroBanco,
 			Map<String, BigDecimal> mapaInfFinanceiro,
 			Map<String, String> mapaInfRecDesp,
@@ -335,9 +730,11 @@ public class JobGetTitulos implements ScheduledAction {
 			Map<String, BigDecimal> mapaInfCenCus,
 			Map<String, BigDecimal> mapaInfCenCusAluno,
 			Map<String, BigDecimal> mapaInfAlunos, String[] response,
-			String url, String token, BigDecimal codemp, String matricula)
+			String url, String token, BigDecimal codemp)
 			throws Exception {
-
+		
+		EnviromentUtils util = new EnviromentUtils();
+		
 		SimpleDateFormat formatoEntrada = new SimpleDateFormat(
 				"yyyy-MM-dd HH:mm:ss.SSS");
 		SimpleDateFormat formatoOriginal = new SimpleDateFormat("yyyy-MM-dd");
@@ -355,12 +752,14 @@ public class JobGetTitulos implements ScheduledAction {
 
 		StringBuilder consulta = new StringBuilder();
 
+		String idAluno = "";
+		
 		try {
-
 
 			String responseString = response[1];
 			String responseStatus = response[0];
-
+			
+			
 			if (responseStatus.equalsIgnoreCase("200")) {
 
 				JsonParser parser = new JsonParser();
@@ -383,7 +782,9 @@ public class JobGetTitulos implements ScheduledAction {
 					String dtVenc = jsonObject.get("titulo_vencimento")
 							.getAsString();
 
-					String idCurso = jsonObject.get("curso_id").getAsString();
+					String idCurso = jsonObject.get("curso_id").isJsonNull() 
+									? "" 
+									: jsonObject.get("curso_id").getAsString();
 
 					String taxaId = jsonObject.get("taxa_id").getAsString();
 
@@ -399,10 +800,12 @@ public class JobGetTitulos implements ScheduledAction {
 					Date data = formatoOriginal.parse(dtVenc);
 					String dataVencFormatada = formatoDesejado.format(data);
 
-					String idAluno = jsonObject.get("aluno_id").getAsString();
+					idAluno = jsonObject.get("aluno_id").getAsString();
+					
+					final String idAlunoF = idAluno;
 
 					BigDecimal codparc = Optional.ofNullable(
-							mapaInfAlunos.get(idAluno)).orElse(BigDecimal.ZERO);
+							mapaInfAlunos.get(idAluno + "###" + codemp)).orElse(BigDecimal.ZERO);
 
 					String situacao_titulo = jsonObject.get("titulo_situacao")
 							.getAsString();
@@ -415,145 +818,163 @@ public class JobGetTitulos implements ScheduledAction {
 						if (vlrDesdob.compareTo(new BigDecimal("5")) > 0
 								&& codparc.compareTo(BigDecimal.ZERO) != 0) {
 							
-							BigDecimal codCenCus = Optional.ofNullable(
-									mapaInfCenCusAluno.get(idAluno)).orElse(
-									BigDecimal.ZERO);// getCodCenCusPeloCusto(taxaId);
+							BigDecimal codCenCus = Optional.ofNullable(mapaInfCenCus.get(taxaId + "###" + tipoEmpresa))
+								    .orElseGet(() -> Optional.ofNullable(mapaInfCenCusAluno.get(idAlunoF))
+								    .orElse(BigDecimal.ZERO));// getCodCenCusPeloCusto(taxaId);
 
-							if (codCenCus.compareTo(BigDecimal.ZERO) == 0) {
-								codCenCus = Optional.ofNullable(
-										mapaInfCenCus.get(taxaId)).orElse(
-										BigDecimal.ZERO);
-							}
+							/*if (codCenCus.compareTo(BigDecimal.ZERO) == 0) {
+								codCenCus = Optional.ofNullable(mapaInfCenCusEmp.get(taxaId + "###" + tipoEmpresa))
+										.orElseGet(() -> Optional.ofNullable(mapaInfCenCus.get(taxaId))
+										.orElse(BigDecimal.ZERO));
+							}*/
+							
 
 							System.out.println("CodCenCus: " + codCenCus);
 							System.out.println("Taxa id: " + taxaId);
 
 							System.out.println("CodParc: " + codparc);
 
-							if (validarDataLimite(dtPedido)
-									&& codCenCus.compareTo(BigDecimal.ZERO) != 0) {
+							if (validarDataLimite(dtPedido)) {
+								
+								if( codCenCus != null && codCenCus.compareTo(BigDecimal.ZERO) != 0){
+									
+									if (codparc.compareTo(BigDecimal.ZERO) != 0) {
+										System.out.println("Entrou no parceiro: "
+												+ codparc);
 
-								if (codparc.compareTo(BigDecimal.ZERO) != 0) {
-									System.out.println("Entrou no parceiro: "
-											+ codparc);
+										BigDecimal validarNufin = Optional.ofNullable(
+												mapaInfFinanceiro.get(codemp + "###"
+														+ idFin)).orElse(
+												BigDecimal.ZERO);
 
-									BigDecimal validarNufin = Optional.ofNullable(
-											mapaInfFinanceiro.get(codemp + "###"
-													+ idFin)).orElse(
-											BigDecimal.ZERO);
+										if (validarNufin.compareTo(BigDecimal.ZERO) == 0) {
+											System.out.println("Entrou no financeiro");
 
-									if (validarNufin.compareTo(BigDecimal.ZERO) == 0) {
-										System.out.println("Entrou no financeiro");
+											BigDecimal codConta = mapaInfConta
+													.get(codemp.toString());// getCodConta(codemp);
 
-										BigDecimal codConta = mapaInfConta
-												.get(codemp.toString());// getCodConta(codemp);
+											BigDecimal codBanco = mapaInfBanco
+													.get(codemp.toString());// getCodBanco(codemp);
 
-										BigDecimal codBanco = mapaInfBanco
-												.get(codemp.toString());// getCodBanco(codemp);
+											String recDesp = mapaInfRecDesp.get(taxaId);
+											
+											BigDecimal natureza = Optional.ofNullable(mapaInfNatureza.get(taxaId + "###" + tipoEmpresa))
+													.orElse(BigDecimal.ZERO);
+											
+//											BigDecimal natureza = Optional.ofNullable(mapaInfNaturezaEmp.get(taxaId + "###" + codemp))
+//																.orElseGet(() -> Optional.ofNullable(mapaInfNatureza.get(taxaId))
+//																.orElse(BigDecimal.ZERO));
+											
+											/*
+											 * (getRecDesp(taxaId)){ recDesp = "-1";
+											 * }else{ recDesp = "1"; }
+											 */
+											if (recDesp != null && !recDesp.isEmpty() && natureza.compareTo(BigDecimal.ZERO) != 0) {
 
-										String recDesp = mapaInfRecDesp.get(taxaId);
-										
-										BigDecimal natureza = Optional.ofNullable(mapaInfNatureza.get(taxaId)).orElse(BigDecimal.ZERO);
-										
-										/*
-										 * (getRecDesp(taxaId)){ recDesp = "-1";
-										 * }else{ recDesp = "1"; }
-										 */
-										if (recDesp != null && !recDesp.isEmpty() && natureza.compareTo(BigDecimal.ZERO) != 0) {
+												String sqlInsert = " SELECT <#NUFIN#>, NULL, 0, 'F', "
+														+ recDesp
+														+ ", "
+														+ codemp
+														+ " , "
+														+ codCenCus
+														+ " , "
+														+ natureza
+														+ " ,  "
+														+ BigDecimal.valueOf(1300)
+														+ " ,  (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = "
+														+ BigDecimal.valueOf(1300)
+														+ "), 0, (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), "
+														+ codparc
+														+ " , "
+														+ BigDecimal.valueOf(4)
+														+ " , "
+														+ vlrDesdob
+														+ " , 0, 0, "
+														+ codBanco
+														+ ", "
+														+ codConta
+														+ ", '"
+														+ dtPedido
+														+ "' , SYSDATE, SYSDATE, '"
+														+ dataVencFormatada
+														+ "', SYSDATE, '"
+														+ dataVencFormatada
+														+ "' , 1 , 1 , null , 'I' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'S' , 'S' , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '"
+														+ idFin
+														+ "', '"
+														+ idAluno
+														+ "' FROM DUAL ";
 
-											String sqlInsert = " SELECT <#NUFIN#>, NULL, 0, 'F', "
-													+ recDesp
-													+ ", "
-													+ codemp
-													+ " , "
-													+ codCenCus
-													+ " , "
-													+ natureza
-													+ " ,  "
-													+ BigDecimal.valueOf(1300)
-													+ " ,  (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = "
-													+ BigDecimal.valueOf(1300)
-													+ "), 0, (SELECT MAX(DHALTER) FROM TGFTOP WHERE CODTIPOPER = 0), "
-													+ codparc
-													+ " , "
-													+ BigDecimal.valueOf(4)
-													+ " , "
-													+ vlrDesdob
-													+ " , 0, 0, "
-													+ codBanco
-													+ ", "
-													+ codConta
-													+ ", '"
-													+ dtPedido
-													+ "' , SYSDATE, SYSDATE, '"
-													+ dataVencFormatada
-													+ "', SYSDATE, '"
-													+ dataVencFormatada
-													+ "' , 1 , 1 , null , 'I' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'N' , 'S' , 'S' , 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '"
-													+ idFin
-													+ "', '"
-													+ idAluno
-													+ "' FROM DUAL ";
+												consulta.append(sqlInsert);
 
-											consulta.append(sqlInsert);
+												selectsParaInsert.add(sqlInsert);
+												qtdInsert++;
 
-											selectsParaInsert.add(sqlInsert);
-											qtdInsert++;
+												if (count < total - 1) {
+													consulta.append("\nUNION ALL");
+												}
 
-											if (count < total - 1) {
-												consulta.append("\nUNION ALL");
+												// BigDecimal nufin = insertFin(codemp,
+												// /* codemp */
+												// codCenCus, /* codCenCus */
+												// mapaInfNatureza.get(taxaId), /*
+												// codNat */
+												// BigDecimal.valueOf(1300), /*
+												// codTipOper */
+												// codparc, /* codparc */
+												// BigDecimal.valueOf(4), /* codtiptit
+												// */
+												// vlrDesdob, /* vlrDesdob */
+												// dataVencFormatada, /* dtvenc */
+												// // "25/11/2023", /* dtvenc */
+												// dtPedido, /* dtPedido */
+												// // "22/11/2023", /* dtPedido */
+												// idFin, idAluno, codConta, codBanco,
+												// recDesp);
+
+												System.out
+														.println("Financeiro cadastrado");
+											} else {
+												selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" para a Taxa ID: "+ taxaId+"', SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+												
+												/*util.inserirLog("Sem \"de para\" para a Taxa ID: "
+																+ taxaId, "Aviso", "", codemp);*/
 											}
 
-											// BigDecimal nufin = insertFin(codemp,
-											// /* codemp */
-											// codCenCus, /* codCenCus */
-											// mapaInfNatureza.get(taxaId), /*
-											// codNat */
-											// BigDecimal.valueOf(1300), /*
-											// codTipOper */
-											// codparc, /* codparc */
-											// BigDecimal.valueOf(4), /* codtiptit
-											// */
-											// vlrDesdob, /* vlrDesdob */
-											// dataVencFormatada, /* dtvenc */
-											// // "25/11/2023", /* dtvenc */
-											// dtPedido, /* dtPedido */
-											// // "22/11/2023", /* dtPedido */
-											// idFin, idAluno, codConta, codBanco,
-											// recDesp);
-
-											System.out
-													.println("Financeiro cadastrado");
+											/*
+											 * insertLogIntegracao(
+											 * "Financeiro com Id Externo: " + idFin +
+											 * " Criado Com Sucesso, numero unico interno: "
+											 * + nufin, "Sucesso");
+											 */
 										} else {
 											System.out
-													.println("Sem \"de para\" para a Taxa ID: "
-															+ taxaId);
+													.println("Financeiro "
+															+ idFin
+															+ " ja cadastrado para o parceiro: "
+															+ codparc);
 										}
 
-										/*
-										 * insertLogIntegracao(
-										 * "Financeiro com Id Externo: " + idFin +
-										 * " Criado Com Sucesso, numero unico interno: "
-										 * + nufin, "Sucesso");
-										 */
 									} else {
-										System.out
-												.println("Financeiro "
-														+ idFin
-														+ " ja cadastrado para o parceiro: "
-														+ codparc);
+										
+										 /*util.inserirLog("Aluno com Id : " +
+										 idAluno + " não Encontrado", "Aviso", idAluno, codemp);*/
+										
+										System.out.println("Aluno com Id: " + 
+														idAluno + " não Encontrado");
+										 
 									}
-
-								} else {
-									/*
-									 * insertLogIntegracao("Aluno com Id : " +
-									 * idAluno + " não Encontrado", "Aviso");
-									 */
+									
+								}else{
+									selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Sem \"de para\" para a Taxa ID: "+ taxaId+"', SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+									
 								}
 
+								
+
 							} else {
-								System.out
-										.println("Data pedido inferior a data limite / Natureza ou Centro de Resultado não encontrados");
+								selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Data pedido inferior a data limite, Data Pedido: "+dtPedido+"', SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
+							
 							}
 
 						}
@@ -571,12 +992,12 @@ public class JobGetTitulos implements ScheduledAction {
 									.get(validarNufin))) {
 
 								BigDecimal nubco = mapaInfFinanceiroBanco.get(validarNufin);
-								updateFinExtorno(validarNufin);
-								deleteTgfMbc(nubco);
-								deleteTgfFin(validarNufin);
+								updateFinExtorno(validarNufin, codemp);
+								deleteTgfMbc(nubco, codemp);
+								deleteTgfFin(validarNufin, codemp);
 
 							}else{
-								deleteTgfFin(validarNufin);
+								deleteTgfFin(validarNufin, codemp);
 							}
 						}
 						
@@ -590,10 +1011,10 @@ public class JobGetTitulos implements ScheduledAction {
 				// Apenas se encontrar registro elegível
 				if (qtdInsert > 0) {
 					// Capturar o tgfnum
-					BigDecimal nuFinInicial = getMaxNumFin();
+					BigDecimal nuFinInicial = util.getMaxNumFin(false);
 
 					// Atualizar o nufin adicionando a quantidade de lista
-					updateNumFinByQtd(qtdInsert);
+					util.updateNumFinByQtd(qtdInsert);
 					System.out.println("nuFinInicial: " + nuFinInicial);
 					// remontar a lista para inserir
 					StringBuilder sqlInsertFin = new StringBuilder();
@@ -614,16 +1035,18 @@ public class JobGetTitulos implements ScheduledAction {
 							+ sqlInsertFin);
 
 					// gravar o financeiro
-					insertFinByList(sqlInsertFin);
+					insertFinByList(sqlInsertFin, codemp);
 
 					// updateFlagAlunoIntegrado(aluno);
 				}
 
 			} else {
-				insertLogIntegracao(
-						"Status retornado pela API diferente de 200, "
-								+ "por favor verificar, Status retornado: "
-								+ responseStatus, "Aviso");
+				selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Api Retornou Status Diferente de 200: "+responseStatus+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+				
+//				util.inserirLog(
+//						"Status retornado pela API diferente de 200, "
+//								+ "por favor verificar, Status retornado: "
+//								+ responseStatus, "Aviso", "", codemp);
 			}
 
 			// }
@@ -634,13 +1057,15 @@ public class JobGetTitulos implements ScheduledAction {
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			try {
-				insertLogIntegracao(
-						"Erro ao integrar financeiro, Mensagem de erro: "
-								+ e.getMessage(), "Erro");
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao integrar financeiro, Mensagem de erro: "
+								+ e.getMessage()+"', SYSDATE, 'Erro', "+codemp+", '"+idAluno+"' FROM DUAL");
+//			try {
+//				util.inserirLog(
+//						"Erro ao integrar financeiro, Mensagem de erro: "
+//								+ e.getMessage(), "Erro", idAluno, codemp);
+//			} catch (Exception e1) {
+//				e1.printStackTrace();
+//			}
 		}
 
 	}
@@ -698,12 +1123,14 @@ public class JobGetTitulos implements ScheduledAction {
 
 	}
 
-	public void insertFinByList(StringBuilder listInsert) throws Exception {
+	public void insertFinByList(StringBuilder listInsert, BigDecimal codemp) throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
-
+		
+		EnviromentUtils util = new EnviromentUtils();
+		
 		try {
 
 			jdbc.openSession();
@@ -749,13 +1176,15 @@ public class JobGetTitulos implements ScheduledAction {
 
 		} catch (Exception se) {
 			se.printStackTrace();
-			try {
-				insertLogIntegracao(
-						"Erro ao integrar financeiro, Mensagem de erro: "
-								+ se.getMessage(), "Erro");
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao integrar financeiro, Mensagem de erro: "
+								+ se.getMessage().replace("'", "\"")+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+//			try {
+//				util.inserirLog(
+//						"Erro ao integrar financeiro, Mensagem de erro: "
+//								+ se.getMessage(), "Erro", "", codemp);
+//			} catch (Exception e1) {
+//				e1.printStackTrace();
+//			}
 		} finally {
 
 			try {
@@ -944,9 +1373,7 @@ public class JobGetTitulos implements ScheduledAction {
 		} catch (Exception se) {
 			se.printStackTrace();
 			try {
-				insertLogIntegracao(
-						"Erro ao integrar financeiro, Mensagem de erro: "
-								+ se.getMessage(), "Erro");
+				
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -979,7 +1406,7 @@ public class JobGetTitulos implements ScheduledAction {
 
 		try {
 
-			updateNumFin();
+			//updateNumFin();
 
 			jdbc.openSession();
 
@@ -1037,7 +1464,7 @@ public class JobGetTitulos implements ScheduledAction {
 
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+			//selectsParaInsert.add("SELECT <#NUMUNICO#>, 'Credor com informações invalidas ou nulas', SYSDATE, 'Aviso', "+codemp+", '' FROM DUAL");
 		} finally {
 			if (rs != null) {
 				rs.close();
@@ -1566,7 +1993,8 @@ public class JobGetTitulos implements ScheduledAction {
 
 	}
 
-	public void insertLogIntegracao(String descricao, String status)
+	public void insertLogIntegracao(String descricao, String status, 
+			String idMatricula, BigDecimal codemp)
 			throws Exception {
 
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1688,15 +2116,16 @@ public class JobGetTitulos implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "	SELECT 	CODPARC, ID_EXTERNO, CODCENCUS ";
+			String sql = "	SELECT 	CODPARC, ID_EXTERNO, CODCENCUS, CODEMP ";
 			sql += "		FROM  	AD_ALUNOS ";
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
-				Object[] ret = new Object[3];
+				Object[] ret = new Object[4];
 				ret[0] = rs.getBigDecimal("CODPARC");
 				ret[1] = rs.getString("ID_EXTERNO");
 				ret[2] = rs.getBigDecimal("CODCENCUS");
+				ret[3] = rs.getBigDecimal("CODEMP");
 
 				listRet.add(ret);
 			}
@@ -1724,14 +2153,16 @@ public class JobGetTitulos implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "SELECT CODCENCUS, IDEXTERNO FROM AD_NATACAD WHERE AD_IDEXTERNO IS NOT NULL";
+			String sql = "SELECT CODCENCUS, IDEXTERNO, CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS FLAG "
+					+ " FROM AD_NATACAD";
 
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
-				Object[] ret = new Object[2];
+				Object[] ret = new Object[3];
 				ret[0] = rs.getBigDecimal("CODCENCUS");
 				ret[1] = rs.getString("IDEXTERNO");
+				ret[2] = rs.getString("FLAG");
 
 				listRet.add(ret);
 			}
@@ -1750,6 +2181,42 @@ public class JobGetTitulos implements ScheduledAction {
 
 		return listRet;
 	}
+	
+	public List<Object[]> retornarInformacoesCenCusEmpresa() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		List<Object[]> listRet = new ArrayList<>();
+		try {
+			jdbc.openSession();
+			String sql = "SELECT CODCENCUS, IDEXTERNO, CODEMP FROM AD_NATACAD WHERE CODEMP IS NOT NULL";
+			
+			pstmt = jdbc.getPreparedStatement(sql);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+				Object[] ret = new Object[3];
+				ret[0] = rs.getBigDecimal("CODCENCUS");
+				ret[1] = rs.getString("IDEXTERNO");
+				ret[2] = rs.getBigDecimal("CODEMP");
+				
+				listRet.add(ret);
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+		
+		return listRet;
+	}
 
 	public List<Object[]> retornarInformacoesNatureza() throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
@@ -1759,14 +2226,15 @@ public class JobGetTitulos implements ScheduledAction {
 		List<Object[]> listRet = new ArrayList<>();
 		try {
 			jdbc.openSession();
-			String sql = "SELECT CODNAT, IDEXTERNO FROM AD_NATACAD";
+			String sql = "SELECT CODNAT, IDEXTERNO, CASE WHEN PROFISSIONAL = 'S' THEN 'P' WHEN TECNICO = 'S' THEN 'T' ELSE 'N' END AS FLAG FROM AD_NATACAD WHERE CODEMP IS NULL";
 
 			pstmt = jdbc.getPreparedStatement(sql);
 			rs = pstmt.executeQuery();
 			while (rs.next()) {
-				Object[] ret = new Object[2];
+				Object[] ret = new Object[3];
 				ret[0] = rs.getBigDecimal("CODNAT");
 				ret[1] = rs.getString("IDEXTERNO");
+				ret[2] = rs.getString("FLAG");
 
 				listRet.add(ret);
 			}
@@ -1783,6 +2251,42 @@ public class JobGetTitulos implements ScheduledAction {
 			jdbc.closeSession();
 		}
 
+		return listRet;
+	}
+	
+	public List<Object[]> retornarInformacoesNaturezaEmpresa() throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		List<Object[]> listRet = new ArrayList<>();
+		try {
+			jdbc.openSession();
+			String sql = "SELECT CODNAT, IDEXTERNO, CODEMP FROM AD_NATACAD WHERE CODEMP IS NOT NULL";
+			
+			pstmt = jdbc.getPreparedStatement(sql);
+			rs = pstmt.executeQuery();
+			while (rs.next()) {
+				Object[] ret = new Object[3];
+				ret[0] = rs.getBigDecimal("CODNAT");
+				ret[1] = rs.getString("IDEXTERNO");
+				ret[2] = rs.getBigDecimal("CODEMP");
+				
+				listRet.add(ret);
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			if (rs != null) {
+				rs.close();
+			}
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+		
 		return listRet;
 	}
 
@@ -1906,7 +2410,7 @@ public class JobGetTitulos implements ScheduledAction {
 		return listRet;
 	}
 	
-	public void updateFinExtorno(BigDecimal nufin) throws Exception {
+	public void updateFinExtorno(BigDecimal nufin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1930,7 +2434,7 @@ public class JobGetTitulos implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao Extornar Titulo "+nufin+": "+e.getMessage()+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1939,7 +2443,7 @@ public class JobGetTitulos implements ScheduledAction {
 		}
 	}
 	
-	public void deleteTgfMbc(BigDecimal nubco) throws Exception {
+	public void deleteTgfMbc(BigDecimal nubco, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1957,7 +2461,8 @@ public class JobGetTitulos implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao Excluir Movimentação Bancaria "+nubco+": "+e.getMessage()+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();
@@ -1966,7 +2471,7 @@ public class JobGetTitulos implements ScheduledAction {
 		}
 	}
 	
-	public void deleteTgfFin(BigDecimal nufin) throws Exception {
+	public void deleteTgfFin(BigDecimal nufin, BigDecimal codemp) throws Exception {
 		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
 		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
 		PreparedStatement pstmt = null;
@@ -1984,7 +2489,33 @@ public class JobGetTitulos implements ScheduledAction {
 			System.out.println("Passou do update");
 		} catch (SQLException e) {
 			e.printStackTrace();
-			throw e;
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao Excluir Titulo "+nufin+": "+e.getMessage()+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
+		} finally {
+			if (pstmt != null) {
+				pstmt.close();
+			}
+			jdbc.closeSession();
+		}
+	}
+
+	public void insertLogList(String listInsert, BigDecimal codemp) throws Exception {
+		EntityFacade entityFacade = EntityFacadeFactory.getDWFFacade();
+		JdbcWrapper jdbc = entityFacade.getJdbcWrapper();
+		PreparedStatement pstmt = null;
+		try {
+			jdbc.openSession();
+			
+			String sqlUpdate = "INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, "
+							 + "	STATUS, CODEMP, MATRICULA_IDFORN) " + listInsert;
+			
+			pstmt = jdbc.getPreparedStatement(sqlUpdate);
+			//pstmt.setString(1, listInsert);
+			pstmt.executeUpdate();
+		} catch (Exception se) {
+			se.printStackTrace();
+			selectsParaInsertLog.add("SELECT <#NUMUNICO#>, 'Erro ao Inserir Lista de Financeiros Titulo: "+se.getMessage()+"', SYSDATE, 'Erro', "+codemp+", '' FROM DUAL");
+			
 		} finally {
 			if (pstmt != null) {
 				pstmt.close();

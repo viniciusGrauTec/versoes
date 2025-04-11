@@ -152,10 +152,11 @@ public class EnviromentUtils {
 	public static Connection conectarSankhya() throws Exception {
 		Connection conn = null;
 		usuarioConectado = getUserDB();
+		System.out.println("UserDb: " + usuarioConectado);
 	//	findUserDBOracle();
 		if ("TREINA".equals(usuarioConectado)) {
 			conn = conectarSankhyaTreina();
-		} else if ("TESTE".equals(usuarioConectado)) {
+		} else if ("GRAUTECNICOTST".equals(usuarioConectado)) {
 			conn = conectarSankhyaTeste();
 		} else {
 			conn = conectarSankhyaProducao();
@@ -169,8 +170,8 @@ public class EnviromentUtils {
 		try {
 			Class.forName("oracle.jdbc.driver.OracleDriver");
 			retorno = DriverManager.getConnection(
-					"jdbc:oracle:thin:@128.1.0.40:1521:ORCL", "sankhya",
-					"tecsis");
+					"jdbc:oracle:thin:@10.40.0.48:1521/prd", "GRAUTECNICOPRD",
+					"t86qxm7u");
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new Exception(e);
@@ -183,8 +184,8 @@ public class EnviromentUtils {
 		try {
 			Class.forName("oracle.jdbc.driver.OracleDriver");
 			retorno = DriverManager.getConnection(
-					"jdbc:oracle:thin::ORCL", "treina",
-					"tecsis");
+					"jdbc:oracle:thin:@10.40.0.48:1521/prd", "GRAUTECNICOTST",
+					"t86qxm7u");
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new Exception(e);
@@ -197,8 +198,9 @@ public class EnviromentUtils {
 		try {
 			Class.forName("oracle.jdbc.driver.OracleDriver");
 			retorno = DriverManager
-					.getConnection("jdbc:oracle:thin::ORCL",
-							"teste", "tecsis");
+					.getConnection("jdbc:oracle:thin:@10.40.0.48:1521/prd", 
+							"GRAUTECNICOTST",
+							"t86qxm7u");
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new Exception(e);
@@ -208,10 +210,35 @@ public class EnviromentUtils {
 
 	public static void updateQueryConnection(String querySql) throws Exception {
 		Connection connection = EnviromentUtils.conectarSankhya();
+		PreparedStatement preparedStatement = null;
+		try {
+			System.out.println("Try");
+			preparedStatement = connection.prepareStatement(querySql);
+			System.out.println("Prepared");
+			preparedStatement.executeUpdate();
+			System.out.println("Executou");
+		} catch (Exception e) {
+			System.out.println("Entrou catch");
+			e.printStackTrace();
+			throw e;
+		} finally {
+			System.out.println("Finally");
+			if (preparedStatement != null) {
+				preparedStatement.close();
+			}
+			connection.close();
+			System.out.println("Fechou");
+		}
+		System.out.println("Finalizou");
+	}
+	
+	public static ResultSet queryConnection(String querySql) throws Exception {
+		Connection connection = EnviromentUtils.conectarSankhya();
+		ResultSet rs = null;
 		try {
 			PreparedStatement preparedStatement = connection
 					.prepareStatement(querySql);
-			preparedStatement.executeUpdate();
+			rs = preparedStatement.executeQuery();
 			preparedStatement.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -219,6 +246,8 @@ public class EnviromentUtils {
 		} finally {
 			connection.close();
 		}
+		
+		return rs;
 	}
 
 	public static void criarEmailFilaEnvio(int seqFila, String corpoMensagem,
@@ -267,6 +296,244 @@ public class EnviromentUtils {
 		return arquivo;
 	}
 	
+	public BigDecimal getMaxNumFin(boolean attNum) throws Exception{
+		
+		if(attNum){
+			updateQueryConnection("UPDATE TGFNUM SET ULTCOD = (NVL(ULTCOD, 0) + 1) WHERE ARQUIVO = 'TGFFIN'");
+		}
+		
+		BigDecimal maxNufin = BigDecimal.ZERO;
+		Connection connection = EnviromentUtils.conectarSankhya();
+		ResultSet rs = null;
+		
+		try {
+			
+			PreparedStatement preparedStatement = connection
+					.prepareStatement("SELECT MAX(ULTCOD) AS ULTCOD FROM TGFNUM WHERE ARQUIVO = 'TGFFIN'");
+			rs = preparedStatement.executeQuery();
+			
+			while(rs.next()){
+				maxNufin = rs.getBigDecimal("ULTCOD");
+			}
+			
+			preparedStatement.close();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception(e.getMessage());
+		} finally {
+			connection.close();
+			if(rs != null){
+				rs.close();
+			}
+			
+		}
+		
+		
+		return maxNufin;
+		
+	}
+	
+	public void updateNumFinByQtd(int qtdAdd) throws Exception {
+		
+		updateQueryConnection("UPDATE TGFNUM SET ULTCOD = (NVL(ULTCOD, 0) + "
+					+ qtdAdd + ")  WHERE ARQUIVO = 'TGFFIN'");
+		
+	}
+	
+	
+	public void insertLogList(String listInsert) throws Exception {
+		
+		updateQueryConnection("INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, "
+				+ "										STATUS, CODEMP, MATRICULA_IDFORN) " + listInsert);
+		
+	}
+	
+	public BigDecimal getMaxNumParc() throws Exception{
+		
+		updateNumParc();
+		
+		Connection connection = EnviromentUtils.conectarSankhya();
+		ResultSet rs = null;
+		
+		BigDecimal maxNumParc = BigDecimal.ZERO;
+		
+		try {
+			
+			PreparedStatement preparedStatement = connection
+					.prepareStatement("SELECT MAX(ULTCOD) AS ULTCOD FROM TGFNUM WHERE ARQUIVO = 'TGFPAR'");
+			rs = preparedStatement.executeQuery();
+			
+			while(rs.next()){
+				maxNumParc = rs.getBigDecimal("ULTCOD");
+			}
+			
+			preparedStatement.close();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception(e.getMessage());
+		} finally {
+			connection.close();
+			if(rs != null){
+				rs.close();
+			}
+			
+		}
+		
+		return maxNumParc;
+		
+	}
+	
+	public int getMaxNumLog() throws Exception{
+		
+		Connection connection = EnviromentUtils.conectarSankhya();
+		ResultSet rs = null;
+		PreparedStatement preparedStatement = null;
+		
+		int maxNumLog = 0;
+		
+		try {
+			
+			preparedStatement = connection
+					.prepareStatement("SELECT AD_LOGINTEGRACAO_SEQUENCE.NEXTVAL AS ULTCOD FROM dual");
+			rs = preparedStatement.executeQuery();
+			
+			while(rs.next()){
+				maxNumLog = rs.getInt("ULTCOD");
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception(e.getMessage());
+		} finally {
+			connection.close();
+			
+			if(preparedStatement != null){
+				preparedStatement.close();
+			}
+			
+			if(rs != null){
+				rs.close();
+			}
+			
+		}
+		
+		return maxNumLog;
+		
+	}
+	
+	public void updateNumParc() throws Exception {
+		
+		updateQueryConnection("UPDATE TGFNUM SET ULTCOD = (NVL(ULTCOD, 0) + 1) WHERE ARQUIVO = 'TGFPAR'");
+		
+	}
+	
+	public BigDecimal getMaxNumMbc() throws Exception{
+		
+		updateNumMbc();
+		
+		Connection connection = EnviromentUtils.conectarSankhya();
+		ResultSet rs = null;
+		
+		BigDecimal maxNufin = BigDecimal.ZERO;
+		
+		try {
+			
+			PreparedStatement preparedStatement = connection
+					.prepareStatement("SELECT MAX(ULTCOD) AS ULTCOD FROM TGFNUM WHERE ARQUIVO = 'TGFMBC'");
+			rs = preparedStatement.executeQuery();
+			
+			while(rs.next()){
+				maxNufin = rs.getBigDecimal("ULTCOD");
+			}
+			
+			preparedStatement.close();
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new Exception(e.getMessage());
+		} finally {
+			connection.close();
+			if(rs != null){
+				rs.close();
+			}
+			
+		}
+		
+		return maxNufin;
+		
+	}
+	
+	public void updateNumMbc() throws Exception {
+		
+		updateQueryConnection("UPDATE TGFNUM SET ULTCOD = (NVL(ULTCOD, 0) + 1) WHERE ARQUIVO = 'TGFMBC'");
+		
+	}
+	
+	public void insertProjeto(BigDecimal codProjPai, String cursoDescricao, String cursoAbrev, String ativo, String analitico, int grau, String cursoId) throws Exception {
+		
+		updateQueryConnection("INSERT INTO TCSPRJ(CODPROJ, CODPROJPAI ,IDENTIFICACAO, ABREVIATURA ,ATIVO, ANALITICO, GRAU, AD_CURSOID)VALUES ((SELECT NVL(MAX(CODPROJ), "+codProjPai+") + 1000 AS CURSONOVO FROM TCSPRJ WHERE CODPROJPAI = "
+					+
+					codProjPai
+					+ ")"
+					+ ","
+					+ codProjPai
+					+ " , '"
+					+ cursoDescricao.toUpperCase()
+					+ "', '"
+					+ cursoAbrev.toUpperCase()
+					+ "', '"
+					+ ativo
+					+ "', '"
+					+ analitico + "','" + grau + "', '" + cursoId + "')");
+		
+	}
+	public void insertCurso(String cursoDescr, BigDecimal codEmp, String turmaId, 
+			String ativo, String analitico, int grau) throws Exception {
+		
+		updateQueryConnection("INSERT INTO TCSPRJ(CODPROJ, CODPROJPAI ,IDENTIFICACAO, ABREVIATURA, ATIVO, ANALITICO, GRAU)VALUES ((SELECT NVL((SELECT MAX(CODPROJ) FROM TCSPRJ WHERE CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ "
+				+ "WHERE TRANSLATE(UPPER (IDENTIFICACAO), '·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE (UPPER ('"
+					+
+					cursoDescr.toUpperCase()
+					+ "'), "
+					+ "'·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "
+				+ codEmp
+				+ "))), (SELECT CODPROJ FROM TCSPRJ WHERE TRANSLATE(UPPER (IDENTIFICACAO), '·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE (UPPER ('"
+					+
+					cursoDescr.toUpperCase()
+					+ "'), "
+					+ "'·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "
+				+ codEmp
+				+ "))) + 1 FROM DUAL),"
+				+ " (SELECT CODPROJ FROM TCSPRJ WHERE TRANSLATE(UPPER (IDENTIFICACAO), '·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') LIKE TRANSLATE (UPPER ('"
+					+
+					cursoDescr.toUpperCase()
+					+ "'), "
+					+ "'·ÈÌÛ˙‚ÍÓÙ˚‡ËÏÚ˘„ıÁ¡…Õ”⁄¬ Œ‘€¿»Ã“Ÿ√’«', 'aeiouaeiouaeiouaocAEIOUAEIOUAEIOUAOC') AND CODPROJPAI = (SELECT CODPROJ FROM TCSPRJ WHERE CODEMP = "
+				+ codEmp
+				+ ")), "
+				+ "'"
+				+ turmaId.toUpperCase()
+				+ "' , "
+				+ "'"
+				+ turmaId.toUpperCase()
+				+ "', '"
+				+ ativo
+				+ "', '"
+				+ analitico + "', '" + grau + "')");
+		
+	}
+	
+	public void inserirLog(String descricao, String status, 
+			String idMatricula, BigDecimal codemp) throws Exception {
+		
+		updateQueryConnection("INSERT INTO AD_LOGINTEGRACAO (NUMUNICO, DESCRICAO, DTHORA, "
+				+ "										STATUS, CODEMP, MATRICULA_IDFORN)"
+				+ " VALUES ((SELECT NVL(MAX(NUMUNICO), 0) + 1 FROM AD_LOGINTEGRACAO), '"+descricao+"', "
+						+ "SYSDATE, '"+status+"', "+codemp+", '"+idMatricula+"')");
+		
+	}
 	
 	public void readBLOBToFileStream(BigDecimal idAnexos, BigDecimal idEmbarque, String vArq) {
 		Connection conn = null;
